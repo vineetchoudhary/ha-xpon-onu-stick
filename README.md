@@ -2,73 +2,6 @@
 
 A local, read-only custom integration for XPON/GPON ONU SFP sticks. It reads the stick's Device Status and PON Status pages from the stick's own management web interface, independently of the router, switch, or media converter the stick is plugged into. Tested with an **ODI DFP-34X-2C2 GPON SFP stick on firmware V1.0-220923**.
 
-## Supported devices
-
-The integration doesn't detect the stick's chipset or model. It works with firmware that serves the stock Realtek status pages described in [Check an untested stick](#check-an-untested-stick).
-
-### Compatible (tested)
-
-| Device | Firmware | Result |
-| --- | --- | --- |
-| ODI DFP-34X-2C2 GPON SFP stick (Realtek RTL9601D, SC/UPC) | `V1.0-220923`, ODI's stock SFU firmware (`M110_sfp_ODI_220923.tar`) | All 16 readings and the login work on a real stick. The stick's Device Status, PON Status, and login pages match the page templates in the published firmware image. |
-
-### Likely supported, not tested
-
-These share the hardware, the firmware, or the Realtek web pages of the tested stick, but none has been tested with this integration. Run the [checks below](#check-an-untested-stick) before relying on one.
-
-| Device | Why it should work | What to check |
-| --- | --- | --- |
-| ODI DFP-34X-2C3 | Same board and firmware as the DFP-34X-2C2, with an SC/APC connector. | Nothing extra if it runs `V1.0-220923`. |
-| ODI DFP-34X-2C2 on other ODI SFU firmware: `V1.0-220304`, `V1.0-220414`, or `V1.0-220817` | Same firmware family as the tested build. | All fields are present. |
-| ODI DFP-34X-2C2 on router (HGU), hybrid, newer, or community-modified firmware, such as `V1.0-210702`, `V1.0-220530`, or the `M114_sfp_ODI_hybrid_*` builds | Same web server, but these builds add or restyle pages. | Lower confidence. Check the fields and the login form. |
-| ODI DFP-34G-2C2 (Realtek version) | Same chip and firmware platform as the DFP-34X-2C2. | Fields and login form. |
-| HSGQ XPON stick (identifies as `HSGQ-XPON-Stick`) | Runs ODI-derived firmware with the same GPON status rows. | Fields and login form. |
-| Luleey LL-XS2510 | Realtek RTL9601D stick whose login form and PON Status page match the stock Realtek pages. | CPU Usage and Memory Usage on the Device Status page. |
-| V-SOL V2801F, T&W TWCGPON657 | Realtek RTL9601CI sticks with the same family of web pages. | Fields and login form. |
-
-### Not supported
-
-- ODI's older ZTE-chipset stick and Lantiq/MaxLinear-based sticks, such as the Huawei MA5671A, Nokia G-010S-P, FS GPON-ONU-34-20BI, and HALNy HL-GSFP. Their web interfaces are different or absent.
-- Replacement firmware that removes the stock status pages, such as odi-oss.
-- Any stick running in EPON mode, as explained below.
-
-### Check an untested stick
-
-The integration works when all of these are true:
-
-- `GET /status.asp` shows Device Name, Uptime, Firmware Version, CPU Usage, Memory Usage, IP Address, Subnet Mask, and MAC Address.
-- `GET /status_pon.asp` shows Temperature, Voltage, Tx Power, Rx Power, Bias Current, ONU State, ONU ID, and LOID Status.
-- The web interface is in English, because field labels are matched as English text.
-- The stick is in GPON mode. In EPON mode, the firmware replaces the ONU State, ONU ID, and LOID Status rows with an EPON table, so the integration reports missing fields.
-- If the pages require a login, `/admin/login.asp` has a form that posts `username`, `password`, and `save` to `/boaform/admin/formLogin` with an empty challenge. Older Realtek firmware that names the password field `psd` isn't supported.
-
-The quickest check is the [live test](#test-the-real-stick), which prints all 16 readings or the reason it can't read them.
-
-References: [ODI DFP-34X-2C2 firmware notes](https://github.com/Anime4000/RTL960x/blob/main/Firmware/DFP-34X-2C2/README.md), [ODI firmware archive](https://www.tripleoxygen.net/files/devices/odi/dfp-34x-2c2/firmware/), and [DFP-34X-2C2 hardware reference](https://hack-gpon.org/ont-odi-realtek-dfp-34x-2c2/).
-
-## Screenshots
-
-The screenshots show one example installation.
-
-<table>
-  <tr>
-    <th>Measurements and friendly statuses</th>
-    <th>Device information and options</th>
-  </tr>
-  <tr>
-    <td valign="top">
-      <img src="docs/screenshots/home-assistant-sensors.png" alt="Home Assistant Sensors section with optical readings, friendly statuses, and the GPON connection state" width="380">
-    </td>
-    <td valign="top">
-      <img src="docs/screenshots/home-assistant-diagnostics.png" alt="Home Assistant Diagnostic section with device, firmware, and network information" width="380">
-      <br>
-      <img src="docs/screenshots/integration-options.png" alt="ONU options menu with Refresh interval and Status limits" width="380">
-      <br>
-      <img src="docs/screenshots/refresh-interval.png" alt="Refresh interval form showing the default interval of 30 seconds" width="380">
-    </td>
-  </tr>
-</table>
-
 ## Install
 
 ### HACS (recommended)
@@ -98,6 +31,29 @@ Alternatively, add the custom repository manually:
 4. Enter your ONU's management address (hostname, IP address, or HTTP(S) base URL) and the username/password you use on its login page. The address field starts blank. Leave credentials blank only if the status pages are accessible directly.
 
 Continue with the [configuration guide](docs/configuration.md) to review the readings and customize the integration's options.
+
+## Screenshots
+
+The screenshots show one example installation.
+
+<table>
+  <tr>
+    <th>Measurements and friendly statuses</th>
+    <th>Device information and options</th>
+  </tr>
+  <tr>
+    <td valign="top">
+      <img src="docs/screenshots/home-assistant-sensors.png" alt="Home Assistant Sensors section with optical readings, friendly statuses, and the GPON connection state" width="380">
+    </td>
+    <td valign="top">
+      <img src="docs/screenshots/home-assistant-diagnostics.png" alt="Home Assistant Diagnostic section with device, firmware, and network information" width="380">
+      <br>
+      <img src="docs/screenshots/integration-options.png" alt="ONU options menu with Refresh interval and Status limits" width="380">
+      <br>
+      <img src="docs/screenshots/refresh-interval.png" alt="Refresh interval form showing the default interval of 30 seconds" width="380">
+    </td>
+  </tr>
+</table>
 
 
 ## Sensors
@@ -202,6 +158,51 @@ Both pages must be valid before a snapshot is published. When either page is unr
 ## Dashboard
 
 [`examples/dashboard.yaml`](examples/dashboard.yaml) contains built-in Home Assistant cards for both status pages, the friendly statuses, and a history graph. Paste it into a Manual dashboard card. Entity IDs start with the stick's Device Name, and the example uses `sensor.aot5222zy_*`. Replace `aot5222zy` with the prefix Home Assistant shows for your stick.
+
+
+## Supported devices
+
+The integration doesn't detect the stick's chipset or model. It works with firmware that serves the stock Realtek status pages described in [Check an untested stick](#check-an-untested-stick).
+
+### Compatible (tested)
+
+| Device | Firmware |
+| --- | --- |
+| ODI DFP-34X-2C2 GPON SFP stick (Realtek RTL9601D, SC/UPC) | `V1.0-220923`, ODI's stock SFU firmware (`M110_sfp_ODI_220923.tar`) |
+
+### Likely supported, not tested
+
+These share the hardware, the firmware, or the Realtek web pages of the tested stick, but none has been tested with this integration. Run the [checks below](#check-an-untested-stick) before relying on one.
+
+| Device | Why it should work | What to check |
+| --- | --- | --- |
+| ODI DFP-34X-2C3 | Same board and firmware as the DFP-34X-2C2, with an SC/APC connector. | Nothing extra if it runs `V1.0-220923`. |
+| ODI DFP-34X-2C2 on other ODI SFU firmware: `V1.0-220304`, `V1.0-220414`, or `V1.0-220817` | Same firmware family as the tested build. | All fields are present. |
+| ODI DFP-34X-2C2 on router (HGU), hybrid, newer, or community-modified firmware, such as `V1.0-210702`, `V1.0-220530`, or the `M114_sfp_ODI_hybrid_*` builds | Same web server, but these builds add or restyle pages. | Lower confidence. Check the fields and the login form. |
+| ODI DFP-34G-2C2 (Realtek version) | Same chip and firmware platform as the DFP-34X-2C2. | Fields and login form. |
+| HSGQ XPON stick (identifies as `HSGQ-XPON-Stick`) | Runs ODI-derived firmware with the same GPON status rows. | Fields and login form. |
+| Luleey LL-XS2510 | Realtek RTL9601D stick whose login form and PON Status page match the stock Realtek pages. | CPU Usage and Memory Usage on the Device Status page. |
+| V-SOL V2801F, T&W TWCGPON657 | Realtek RTL9601CI sticks with the same family of web pages. | Fields and login form. |
+
+### Not supported
+
+- ODI's older ZTE-chipset stick and Lantiq/MaxLinear-based sticks, such as the Huawei MA5671A, Nokia G-010S-P, FS GPON-ONU-34-20BI, and HALNy HL-GSFP. Their web interfaces are different or absent.
+- Replacement firmware that removes the stock status pages, such as odi-oss.
+- Any stick running in EPON mode, as explained below.
+
+### Check an untested stick
+
+The integration works when all of these are true:
+
+- `GET /status.asp` shows Device Name, Uptime, Firmware Version, CPU Usage, Memory Usage, IP Address, Subnet Mask, and MAC Address.
+- `GET /status_pon.asp` shows Temperature, Voltage, Tx Power, Rx Power, Bias Current, ONU State, ONU ID, and LOID Status.
+- The web interface is in English, because field labels are matched as English text.
+- The stick is in GPON mode. In EPON mode, the firmware replaces the ONU State, ONU ID, and LOID Status rows with an EPON table, so the integration reports missing fields.
+- If the pages require a login, `/admin/login.asp` has a form that posts `username`, `password`, and `save` to `/boaform/admin/formLogin` with an empty challenge. Older Realtek firmware that names the password field `psd` isn't supported.
+
+The quickest check is the [live test](#test-the-real-stick), which prints all 16 readings or the reason it can't read them.
+
+References: [ODI DFP-34X-2C2 firmware notes](https://github.com/Anime4000/RTL960x/blob/main/Firmware/DFP-34X-2C2/README.md), [ODI firmware archive](https://www.tripleoxygen.net/files/devices/odi/dfp-34x-2c2/firmware/), and [DFP-34X-2C2 hardware reference](https://hack-gpon.org/ont-odi-realtek-dfp-34x-2c2/).
 
 ## Development and verification
 
