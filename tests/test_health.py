@@ -2,7 +2,7 @@
 
 import pytest
 
-from custom_components.xpon_gnu_stick.health import (
+from custom_components.xpon_onu_stick.health import (
     LIMIT_DEFAULTS,
     ONU_STATES,
     measurement_status,

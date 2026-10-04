@@ -6,7 +6,7 @@ from unittest.mock import patch
 import aiohttp
 import pytest
 
-from custom_components.xpon_gnu_stick.api import (
+from custom_components.xpon_onu_stick.api import (
     DEVICE_FIELDS,
     PON_FIELDS,
     OnuAuthError,

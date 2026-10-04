@@ -11,7 +11,7 @@ import aiohttp
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from custom_components.xpon_gnu_stick.api import OnuClient, OnuError  # noqa: E402
+from custom_components.xpon_onu_stick.api import OnuClient, OnuError  # noqa: E402
 
 
 async def main() -> None:

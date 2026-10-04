@@ -12,7 +12,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.data_entry_flow import FlowManagerIndexView
 
-from custom_components.xpon_gnu_stick.api import (
+from custom_components.xpon_onu_stick.api import (
     DEVICE_FIELDS,
     PON_FIELDS,
     OnuAuthError,
@@ -20,7 +20,7 @@ from custom_components.xpon_gnu_stick.api import (
     OnuStatus,
     parse_status_page,
 )
-from custom_components.xpon_gnu_stick.const import DOMAIN
+from custom_components.xpon_onu_stick.const import DOMAIN
 
 
 async def add_device(hass, host):
@@ -33,7 +33,7 @@ async def add_device(hass, host):
 
 
 async def test_initial_setup_requires_an_address_and_never_uses_a_fallback(hass):
-    with patch("custom_components.xpon_gnu_stick.config_flow.OnuClient.async_get_status") as fetch:
+    with patch("custom_components.xpon_onu_stick.config_flow.OnuClient.async_get_status") as fetch:
         result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": "user"})
         assert result["type"] is FlowResultType.FORM
         schema = result["data_schema"]
@@ -174,7 +174,7 @@ async def test_duplicate_device(hass, onu_server):
 )
 async def test_flow_errors(hass, error, expected):
     with patch(
-        "custom_components.xpon_gnu_stick.config_flow.OnuClient.async_get_status",
+        "custom_components.xpon_onu_stick.config_flow.OnuClient.async_get_status",
         side_effect=error,
     ):
         result = await hass.config_entries.flow.async_init(
@@ -185,7 +185,7 @@ async def test_flow_errors(hass, error, expected):
 
 
 async def test_bad_host_and_missing_username_never_fetch(hass):
-    with patch("custom_components.xpon_gnu_stick.config_flow.OnuClient.async_get_status") as fetch:
+    with patch("custom_components.xpon_onu_stick.config_flow.OnuClient.async_get_status") as fetch:
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": "user"}, data={CONF_HOST: "http://onu/reboot.asp"}
         )
@@ -343,7 +343,7 @@ async def test_invalid_status_limits_leave_existing_options_and_poll_untouched(
 async def test_all_friendly_sensor_states_have_english_labels(hass, onu_server):
     from homeassistant.helpers.translation import async_get_translations
 
-    from custom_components.xpon_gnu_stick.sensor import STATUS_SENSORS
+    from custom_components.xpon_onu_stick.sensor import STATUS_SENSORS
 
     host, _, _ = onu_server
     await add_device(hass, host)
@@ -412,7 +412,7 @@ async def test_startup_connection_failure_is_retryable(hass, onu_server, device_
     )
     # First call validates the flow; the startup refresh then loses connectivity.
     with patch(
-        "custom_components.xpon_gnu_stick.api.OnuClient.async_get_status",
+        "custom_components.xpon_onu_stick.api.OnuClient.async_get_status",
         side_effect=[snapshot, OnuConnectionError()],
     ):
         entry = await add_device(hass, host)

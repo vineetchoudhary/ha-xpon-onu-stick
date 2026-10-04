@@ -1,5 +1,5 @@
 {
-  "domain": "xpon_gnu_stick",
+  "domain": "xpon_onu_stick",
   "name": "XPON ONU Stick",
   "codeowners": ["@vineetchoudhary"],
   "config_flow": true,
@@ -8,5 +8,5 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/vineetchoudhary/ha-xpon-onu-stick/issues",
   "requirements": [],
-  "version": "0.2.5"
+  "version": "0.3.0"
 }

@@ -1,10 +1,54 @@
 # XPON ONU Stick for Home Assistant
 
-A local, read-only custom integration for the Device Status and PON Status pages on an ONU stick. It connects to the stick's own management web interface, independently of the router, switch, or media converter hosting it. Verified against an **AOT5222ZY running V1.0-220923**. 
+A local, read-only custom integration for XPON/GPON ONU SFP sticks. It reads the stick's Device Status and PON Status pages from the stick's own management web interface, independently of the router, switch, or media converter the stick is plugged into. Tested with an **ODI DFP-34X-2C2 GPON SFP stick on firmware V1.0-220923**.
+
+## Supported devices
+
+The integration doesn't detect the stick's chipset or model. It works with firmware that serves the stock Realtek status pages described in [Check an untested stick](#check-an-untested-stick).
+
+### Compatible (tested)
+
+| Device | Firmware | Result |
+| --- | --- | --- |
+| ODI DFP-34X-2C2 GPON SFP stick (Realtek RTL9601D, SC/UPC) | `V1.0-220923`, ODI's stock SFU firmware (`M110_sfp_ODI_220923.tar`) | All 16 readings and the login work on a real stick. The stick's Device Status, PON Status, and login pages match the page templates in the published firmware image. |
+
+### Likely supported, not tested
+
+These share the hardware, the firmware, or the Realtek web pages of the tested stick, but none has been tested with this integration. Run the [checks below](#check-an-untested-stick) before relying on one.
+
+| Device | Why it should work | What to check |
+| --- | --- | --- |
+| ODI DFP-34X-2C3 | Same board and firmware as the DFP-34X-2C2, with an SC/APC connector. | Nothing extra if it runs `V1.0-220923`. |
+| ODI DFP-34X-2C2 on other ODI SFU firmware: `V1.0-220304`, `V1.0-220414`, or `V1.0-220817` | Same firmware family as the tested build. | All fields are present. |
+| ODI DFP-34X-2C2 on router (HGU), hybrid, newer, or community-modified firmware, such as `V1.0-210702`, `V1.0-220530`, or the `M114_sfp_ODI_hybrid_*` builds | Same web server, but these builds add or restyle pages. | Lower confidence. Check the fields and the login form. |
+| ODI DFP-34G-2C2 (Realtek version) | Same chip and firmware platform as the DFP-34X-2C2. | Fields and login form. |
+| HSGQ XPON stick (identifies as `HSGQ-XPON-Stick`) | Runs ODI-derived firmware with the same GPON status rows. | Fields and login form. |
+| Luleey LL-XS2510 | Realtek RTL9601D stick whose login form and PON Status page match the stock Realtek pages. | CPU Usage and Memory Usage on the Device Status page. |
+| V-SOL V2801F, T&W TWCGPON657 | Realtek RTL9601CI sticks with the same family of web pages. | Fields and login form. |
+
+### Not supported
+
+- ODI's older ZTE-chipset stick and Lantiq/MaxLinear-based sticks, such as the Huawei MA5671A, Nokia G-010S-P, FS GPON-ONU-34-20BI, and HALNy HL-GSFP. Their web interfaces are different or absent.
+- Replacement firmware that removes the stock status pages, such as odi-oss.
+- Any stick running in EPON mode, as explained below.
+
+### Check an untested stick
+
+The integration works when all of these are true:
+
+- `GET /status.asp` shows Device Name, Uptime, Firmware Version, CPU Usage, Memory Usage, IP Address, Subnet Mask, and MAC Address.
+- `GET /status_pon.asp` shows Temperature, Voltage, Tx Power, Rx Power, Bias Current, ONU State, ONU ID, and LOID Status.
+- The web interface is in English, because field labels are matched as English text.
+- The stick is in GPON mode. In EPON mode, the firmware replaces the ONU State, ONU ID, and LOID Status rows with an EPON table, so the integration reports missing fields.
+- If the pages require a login, `/admin/login.asp` has a form that posts `username`, `password`, and `save` to `/boaform/admin/formLogin` with an empty challenge. Older Realtek firmware that names the password field `psd` isn't supported.
+
+The quickest check is the [live test](#test-the-real-stick), which prints all 16 readings or the reason it can't read them.
+
+References: [ODI DFP-34X-2C2 firmware notes](https://github.com/Anime4000/RTL960x/blob/main/Firmware/DFP-34X-2C2/README.md), [ODI firmware archive](https://www.tripleoxygen.net/files/devices/odi/dfp-34x-2c2/firmware/), and [DFP-34X-2C2 hardware reference](https://hack-gpon.org/ont-odi-realtek-dfp-34x-2c2/).
 
 ## Screenshots
 
-The screenshots show one example installation. Use your own ONU management address when configuring the integration. The address field starts blank.
+The screenshots show one example installation.
 
 <table>
   <tr>
@@ -48,7 +92,7 @@ Alternatively, add the custom repository manually:
 
 ### Manual installation
 
-1. Copy `custom_components/xpon_gnu_stick` into Home Assistant's `/config/custom_components/` directory. 
+1. Copy `custom_components/xpon_onu_stick` into Home Assistant's `/config/custom_components/` directory.
 2. Restart Home Assistant.
 3. Open **Settings → Devices & services → Add integration**, and search for **XPON ONU Stick**.
 4. Enter your ONU's management address (hostname, IP address, or HTTP(S) base URL) and the username/password you use on its login page. The address field starts blank. Leave credentials blank only if the status pages are accessible directly.
@@ -61,7 +105,7 @@ Continue with the [configuration guide](docs/configuration.md) to review the rea
 | Page | Sensor | Unit / format |
 | --- | --- | --- |
 | Device Status | Device name | Text |
-| Device Status | Uptime | Original firmware text, e.g. `1:21` |
+| Device Status | Uptime | Original firmware text, e.g. `1:21` or `3 days, 21:22` |
 | Device Status | Firmware version | Text |
 | Device Status | CPU usage | % |
 | Device Status | Memory usage | % |
@@ -138,7 +182,11 @@ The default refresh interval is **30 seconds**. Each poll makes two sequential G
 
 The [configuration guide](docs/configuration.md#4-set-the-refresh-interval) shows the refresh interval form and how to apply changes.
 
-Use **Reconfigure** to change the device address or credentials. Re-enter the password if authentication is enabled. The MAC address provides a stable identity, so changing the management address does not create new entities. A different stick at the same address is rejected instead of overwriting the original device's readings.
+Use **Reconfigure** to change the device address or credentials. Re-enter the password if authentication is enabled.
+
+The stick's MAC address is its identity in Home Assistant. Changing the management address doesn't create new entities, and a different stick at the same address is rejected instead of overwriting the original device's readings. If you later clone a different MAC address onto the stick, Home Assistant treats it as a different stick, so remove the integration and add it again.
+
+Home Assistant names the device after the firmware's Device Name and also shows that value as the device model. If the stick was set up with an ISP ONT's identity, the Device Name is the ONT's name, not the stick's hardware model.
 
 ## Read-only behavior
 
@@ -147,13 +195,13 @@ The integration reads the two status pages:
 - `GET /status.asp`
 - `GET /status_pon.asp`
 
-When the stick requests authentication, it also uses `GET /admin/login.asp` and submits **only** the login form with `POST /boaform/admin/formLogin`. It does not submit the status pages' Refresh forms, follow redirects, read settings pages, or expose configuration/reboot controls. Adding or changing the integration's options changes only Home Assistant configuration.
+When the stick requests authentication, it also uses `GET /admin/login.asp` and submits **only** the login form with `POST /boaform/admin/formLogin`. If you enter a username, every request also carries it as HTTP Basic credentials, for firmware that protects its pages that way. It does not submit the status pages' Refresh forms, follow redirects, read settings pages, or expose configuration/reboot controls. Adding or changing the integration's options changes only Home Assistant configuration.
 
 Both pages must be valid before a snapshot is published. When either page is unreachable or invalid, the sensors become unavailable instead of displaying stale readings as current. Polling resumes after ordinary connection failures. Empty or `N/A` readings become unknown, rather than a fabricated zero.
 
 ## Dashboard
 
-[`examples/dashboard.yaml`](examples/dashboard.yaml) contains built-in Home Assistant cards for both status pages, the friendly statuses, and a history graph. Paste it into a Manual dashboard card. The example uses the default `sensor.aot5222zy_*` entity IDs. Adjust them if you rename the device/entities or Home Assistant assigns a suffix.
+[`examples/dashboard.yaml`](examples/dashboard.yaml) contains built-in Home Assistant cards for both status pages, the friendly statuses, and a history graph. Paste it into a Manual dashboard card. Entity IDs start with the stick's Device Name, and the example uses `sensor.aot5222zy_*`. Replace `aot5222zy` with the prefix Home Assistant shows for your stick.
 
 ## Development and verification
 
@@ -170,7 +218,6 @@ Run commands from the repository directory. Use **Python 3.14.2 or newer in the 
 ```
 
 The script checks HACS metadata, repository layout, translations, brand images, installed dependencies, lint, formatting, and the complete test suite. Tests cover status boundaries, ONU state descriptions, shared polling, options form display, and saving or clearing module-specific limits. It stops at the first failing check and returns a nonzero exit code. Full output is saved to `.test-results/test-*.log`, including failed runs.
-
 
 ### Test the real stick
 

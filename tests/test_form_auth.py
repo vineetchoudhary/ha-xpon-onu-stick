@@ -7,8 +7,8 @@ import pytest
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.data_entry_flow import FlowResultType
 
-from custom_components.xpon_gnu_stick.api import OnuAuthError, OnuClient, OnuConnectionError
-from custom_components.xpon_gnu_stick.const import DOMAIN
+from custom_components.xpon_onu_stick.api import OnuAuthError, OnuClient, OnuConnectionError
+from custom_components.xpon_onu_stick.const import DOMAIN
 
 
 @pytest.mark.parametrize("protected_response", ["redirect", "html"])

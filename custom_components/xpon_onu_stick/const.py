@@ -1,6 +1,6 @@
 """Constants for XPON ONU Stick."""
 
-DOMAIN = "xpon_gnu_stick"
+DOMAIN = "xpon_onu_stick"
 DEFAULT_SCAN_INTERVAL = 30
 MIN_SCAN_INTERVAL = 10
 MAX_SCAN_INTERVAL = 3600
