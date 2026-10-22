@@ -24,7 +24,7 @@ from homeassistant.helpers.http import KEY_ALLOW_CONFIGURED_CORS
 from custom_components.xpon_onu_stick import async_setup
 from custom_components.xpon_onu_stick.const import CARD_URL, DOMAIN
 from custom_components.xpon_onu_stick.frontend import async_register_card
-from custom_components.xpon_onu_stick.sensor import SENSORS, STATUS_SENSORS
+from custom_components.xpon_onu_stick.sensor import GPON_SENSOR_KEYS, SENSORS, STATUS_SENSORS
 from tools.card_ui import Browser, find_browser
 
 CARD = (
@@ -161,8 +161,13 @@ def test_card_uses_the_integration_domain():
     assert re.search(rf'const DOMAIN = "{DOMAIN}";', CARD.read_text())
 
 
-async def test_every_sensor_has_the_translation_key_the_card_uses(hass, onu_server):
-    host, _, _ = onu_server
+@pytest.mark.parametrize("mode", ["gpon", "epon"])
+async def test_card_readings_have_discoverable_translation_keys(
+    hass, onu_server, epon_pon_html, mode
+):
+    host, state, _ = onu_server
+    if mode == "epon":
+        state["pon"] = epon_pon_html
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": "user"}, data={CONF_HOST: host}
     )
@@ -170,5 +175,10 @@ async def test_every_sensor_has_the_translation_key_the_card_uses(hass, onu_serv
 
     entries = er.async_entries_for_config_entry(er.async_get(hass), result["result"].entry_id)
     keys = {description.key for description in SENSORS + STATUS_SENSORS}
+    if mode == "epon":
+        keys -= GPON_SENSOR_KEYS
+        llids = [entry for entry in entries if "_epon_llid_" in entry.unique_id]
+        assert len(llids) == 2
+        entries = [entry for entry in entries if entry not in llids]
     assert {entry.translation_key for entry in entries} == keys
     assert len(entries) == len(keys)

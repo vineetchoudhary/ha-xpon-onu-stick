@@ -4,7 +4,7 @@
 
 # XPON ONU Stick for Home Assistant
 
-Monitor your XPON/GPON ONU SFP stick in Home Assistant through its local web interface. The integration reads status without changing the stick's settings.
+Monitor your XPON/GPON/EPON ONU SFP stick in Home Assistant through its local web interface. The integration reads status without changing the stick's settings.
 
 Tested with the **ODI DFP-34X-2C2** on firmware **V1.0-220923**. Requires Home Assistant **2026.9.0 or newer**.
 
@@ -18,9 +18,11 @@ Tested with the **ODI DFP-34X-2C2** on firmware **V1.0-220923**. Requires Home A
 
 - Monitor optical power, temperature, voltage, laser bias current, CPU, and memory.
 - See GPON registration status and device information across 22 sensors.
+- Automatically detect EPON and expose raw status codes for each LLID index (20 sensors with two LLIDs). EPON support is verified against captured `V2.11.00P3T1` pages and local simulations.
 - Adjust refresh intervals and status limits.
 - Use the included dashboard card with a 24-hour Rx power trend.
 - Keep valid readings available when another field cannot be parsed.
+- Optionally log out after successful polls through **Session Settings** (disabled by default); logout failures do not interrupt sensor updates.
 
 ## Quick Start
 

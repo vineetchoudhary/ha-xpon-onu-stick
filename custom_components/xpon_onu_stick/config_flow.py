@@ -15,6 +15,7 @@ from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_SCAN_INTERVAL, CO
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
@@ -25,6 +26,8 @@ from homeassistant.helpers.selector import (
 
 from .api import OnuAuthError, OnuClient, OnuConnectionError, OnuParseError, normalize_host
 from .const import (
+    CONF_LOGOUT_AFTER_POLL,
+    DEFAULT_LOGOUT_AFTER_POLL,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     MAX_SCAN_INTERVAL,
@@ -101,6 +104,11 @@ class OnuConfigFlow(ConfigFlow, domain=DOMAIN):
                         data[CONF_HOST],
                         data[CONF_USERNAME],
                         data[CONF_PASSWORD],
+                        logout_after_poll=(
+                            entry.options.get(CONF_LOGOUT_AFTER_POLL, DEFAULT_LOGOUT_AFTER_POLL)
+                            if entry
+                            else DEFAULT_LOGOUT_AFTER_POLL
+                        ),
                     )
                     status = await client.async_get_status()
                     await self.async_set_unique_id(status.mac_address)
@@ -109,8 +117,7 @@ class OnuConfigFlow(ConfigFlow, domain=DOMAIN):
                         return self.async_update_reload_and_abort(entry, data=data)
                     self._abort_if_unique_id_configured()
                     return self.async_create_entry(
-                        title=status.values["device_name"]
-                        or f"XPON ONU Stick ({status.mac_address})",
+                        title=status.name,
                         data=data,
                     )
             except ValueError:
@@ -130,10 +137,33 @@ class OnuConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class OnuOptionsFlow(OptionsFlowWithReload):
-    """Change Home Assistant polling and advisory status limits."""
+    """Change polling, advisory status limits, and session behavior."""
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        return self.async_show_menu(step_id="init", menu_options=["polling", "status_limits"])
+        return self.async_show_menu(
+            step_id="init", menu_options=["polling", "status_limits", "session"]
+        )
+
+    async def async_step_session(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            return self.async_create_entry(
+                title="", data={**self.config_entry.options, **user_input}
+            )
+        return self.async_show_form(
+            step_id="session",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_LOGOUT_AFTER_POLL,
+                        default=self.config_entry.options.get(
+                            CONF_LOGOUT_AFTER_POLL, DEFAULT_LOGOUT_AFTER_POLL
+                        ),
+                    ): BooleanSelector(),
+                }
+            ),
+        )
 
     async def async_step_polling(
         self, user_input: dict[str, Any] | None = None

@@ -49,7 +49,15 @@
         "title": "ONU options",
         "menu_options": {
           "polling": "Refresh interval",
-          "status_limits": "Status limits"
+          "status_limits": "Status limits",
+          "session": "Session Settings"
+        }
+      },
+      "session": {
+        "title": "Session Settings",
+        "description": "Logout after polling is disabled by default. Enabling it may also end another client's web session on devices that share sessions.",
+        "data": {
+          "logout_after_poll": "Log out after a successful poll"
         }
       },
       "polling": {

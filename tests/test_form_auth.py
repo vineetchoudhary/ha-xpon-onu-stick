@@ -12,49 +12,57 @@ from custom_components.xpon_onu_stick.const import DOMAIN
 
 
 @pytest.mark.parametrize("protected_response", ["redirect", "html"])
-async def test_form_login_uses_actual_fields_and_retains_ip_cookie(onu_server, protected_response):
+async def test_form_login_uses_actual_fields_and_logs_out_each_poll(onu_server, protected_response):
     host, state, requests = onu_server
     state["form_auth"] = ("reader", "secret")
     state["protected_response"] = protected_response
     # HA's shared session can have no cookie storage. The client must retain
     # IP-address cookies itself, independently of the shared session.
     async with aiohttp.ClientSession(cookie_jar=aiohttp.DummyCookieJar()) as session:
-        client = OnuClient(session, host, "reader", "secret")
+        client = OnuClient(session, host, "reader", "secret", logout_after_poll=True)
         assert (await client.async_get_status()).values["onu_state"] == "O5"
         assert (await client.async_get_status()).values["rx_power"] == -26.382721
-    assert state["login_posts"] == [
-        {
-            "challenge": "",
-            "username": "reader",
-            "password": "secret",
-            "save": "Login",
-            "submit-url": "/admin/login.asp",
-        }
-    ]
+    assert (
+        state["login_posts"]
+        == [
+            {
+                "challenge": "",
+                "username": "reader",
+                "password": "secret",
+                "save": "Login",
+                "submit-url": "/admin/login.asp",
+            }
+        ]
+        * 2
+    )
+    assert not state["sessions"]
+    assert len(state["logout_posts"]) == 2
     assert [(method, path) for method, path, _ in requests] == [
         ("GET", "/status.asp"),
         ("GET", "/admin/login.asp"),
         ("POST", "/boaform/admin/formLogin"),
         ("GET", "/status.asp"),
         ("GET", "/status_pon.asp"),
-        ("GET", "/status.asp"),
-        ("GET", "/status_pon.asp"),
-    ]
+        ("POST", "/boaform/admin/formLogout"),
+    ] * 2
 
 
 async def test_automatically_renews_expired_session(onu_server):
     host, state, _ = onu_server
     state["form_auth"] = ("reader", "secret")
     async with aiohttp.ClientSession() as session:
-        client = OnuClient(session, host, "reader", "secret")
+        client = OnuClient(session, host, "reader", "secret", logout_after_poll=True)
         await client.async_get_status()
         state["sessions"].clear()
         assert (await client.async_get_status()).values["onu_state"] == "O5"
         # A session can expire between the two page requests. Retry the entire
         # snapshot after login so it never combines stale and fresh readings.
+        await client._async_login()
         state["expire_before_pon"] = True
         assert len((await client.async_get_status()).values) == 16
-    assert len(state["login_posts"]) == 3
+    assert len(state["login_posts"]) == 4
+    assert len(state["logout_posts"]) == 3
+    assert not state["sessions"]
 
 
 @pytest.mark.parametrize("login_status", [200, 302])
@@ -216,6 +224,8 @@ async def test_session_expiry_between_pages_during_an_outage(hass, onu_server, o
     await entry.runtime_data.async_refresh()
     assert entry.runtime_data.last_update_success
     assert len(state["login_posts"]) == logins_before + 1
+    assert not state["logout_posts"]
+    assert state["sessions"]
     assert hass.states.get("sensor.aot5222zy_tx_power").state == "unknown"
     assert "-inf dBm" in hass.states.get("sensor.aot5222zy_tx_power").attributes["parse_error"]
     assert hass.states.get("sensor.aot5222zy_rx_power").state == "-40.0"

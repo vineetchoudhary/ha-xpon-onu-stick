@@ -9,7 +9,7 @@ from homeassistant.helpers.typing import ConfigType
 from homeassistant.setup import async_when_setup
 
 from .api import OnuClient
-from .const import DOMAIN
+from .const import CONF_LOGOUT_AFTER_POLL, DEFAULT_LOGOUT_AFTER_POLL, DOMAIN
 from .coordinator import OnuCoordinator
 from .frontend import async_register_card
 
@@ -31,6 +31,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: OnuConfigEntry) -> bool:
         entry.data[CONF_HOST],
         entry.data.get(CONF_USERNAME, ""),
         entry.data.get(CONF_PASSWORD, ""),
+        logout_after_poll=entry.options.get(CONF_LOGOUT_AFTER_POLL, DEFAULT_LOGOUT_AFTER_POLL),
     )
     coordinator = OnuCoordinator(hass, entry, client)
     await coordinator.async_config_entry_first_refresh()

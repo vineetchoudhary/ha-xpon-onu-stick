@@ -6,6 +6,10 @@
 | --- | --- |
 | ODI DFP-34X-2C2, Realtek RTL9601D | `V1.0-220923`, stock SFU build `M110_sfp_ODI_220923.tar` |
 
+## EPON capture coverage
+
+EPON support is verified against sanitized Device Status and PON Status captures from firmware `V2.11.00P3T1`, plus local simulator tests. It has not been verified against a live EPON ONU. The captured page contains an **EPON LLID Status** table with indices `0` and `1`; status codes are exposed unchanged without interpreting them as GPON registration states.
+
 ## Likely supported, not tested
 
 These use related hardware or web pages. Run the [compatibility checks](#check-an-untested-stick) before relying on them.
@@ -24,13 +28,13 @@ These use related hardware or web pages. Run the [compatibility checks](#check-a
 
 - Older ZTE-based ODI sticks and Lantiq/MaxLinear sticks with different web interfaces.
 - Replacement firmware that removes the stock status pages, such as odi-oss.
-- EPON registration tables. Other recognized measurements can still update.
+- EPON web layouts without the recognized LLID table structure.
 
 ## Check an untested stick
 
 - Both `/status.asp` and `/status_pon.asp` must be reachable and use English field labels.
 - Check the expected [sensors](sensors.md) and a valid MAC address.
-- Use GPON mode for registration monitoring.
+- GPON registration monitoring and EPON LLID status readings are selected automatically from the PON page.
 - Login must use HTTP Basic authentication or the supported `/boaform/admin/formLogin` form. Forms using a `psd` password field are not supported.
 
 Run the [live check](development.md#test-the-real-stick) to confirm readings. Missing or invalid fields are handled as described in [firmware values](firmware-values.md).

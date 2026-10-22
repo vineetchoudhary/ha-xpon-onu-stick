@@ -1,0 +1,77 @@
+<html>
+<! Copyright (c) Realtek Semiconductor Corp., 2003. All Rights Reserved. ->
+<head>
+<meta http-equiv="Content-Type" content="text/html" charset="utf-8">
+<title>PON Status</title>
+<script type="text/javascript" src="share.js">
+</script>
+</head>
+<body>
+<blockquote>
+
+<h2><b><font color="#0000FF">PON Status</font></b></h2>
+
+<table border=0 width="500" cellspacing=0 cellpadding=0>
+<tr><td><font size=2>
+ This page shows the current system status of PON.
+</font></td></tr>
+
+<tr><td><hr size=1 noshade align=top><br></td></tr>
+</table>
+
+<table width=400 border=0>
+  <tr>
+    <td width=100% colspan="2" bgcolor="#008000"><font color="#FFFFFF" size=2><b>PON Status</b></font></td>
+  </tr>
+<!--
+  <tr bgcolor="#DDDDDD">
+    <td width=40%><font size=2><b>Vendor Name</b></td>
+    <td width=60%><font size=2>Twowing         </td>
+  </tr>
+  <tr bgcolor="#DDDDDD">
+    <td width=40%><font size=2><b>Part Number</b></td>
+    <td width=60%><font size=2>GN25L95         </td>
+  </tr>
+-->
+  <tr bgcolor="#DDDDDD">
+    <td width=40%><font size=2><b>Temperature</b></td>
+    <td width=60%><font size=2>41.0 C</td>
+  </tr>
+  <tr bgcolor="#DDDDDD">
+    <td width=40%><font size=2><b>Voltage</b></td>
+    <td width=60%><font size=2>3.32 V</td>
+  </tr>
+  <tr bgcolor="#DDDDDD">
+    <td width=40%><font size=2><b>Tx Power</b></td>
+    <td width=60%><font size=2>2.3  dBm</td>
+  </tr>
+  <tr bgcolor="#DDDDDD">
+    <td width=40%><font size=2><b>Rx Power</b></td>
+    <td width=60%><font size=2>-18.1  dBm</td>
+  </tr>
+  <tr bgcolor="#DDDDDD">
+    <td width=40%><font size=2><b>Bias Current</b></td>
+    <td width=60%><font size=2>16.80 mA</td>
+  </tr>
+</table>
+<br>
+<table width=400 border=0>
+
+</table>
+<table width=400 border=0>
+  <td width=100% colspan="2" bgcolor="#008000"><font color="#FFFFFF" size=2><b> EPON LLID Status </b></font></td><tr><font size=1><td align=center width="33%" bgcolor="#808080">index</td>
+<td align=center width="33%" bgcolor="#808080">Status</td>
+</font></tr>
+<tr><td align=center width="33%" bgcolor="#C0C0C0"><font size="2"><b>0</b></font></td>
+<td align=center width="33%" bgcolor="#C0C0C0"><font size="2"><b>1</b></font></td><br>
+<tr><td align=center width="33%" bgcolor="#C0C0C0"><font size="2"><b>1</b></font></td>
+<td align=center width="33%" bgcolor="#C0C0C0"><font size="2"><b>0</b></font></td><br>
+
+</table>
+<form action=/boaform/admin/formStatus_pon method=POST name="status_pon">
+  <input type="hidden" value="/status_pon.asp" name="submit-url">
+  <input type="submit" value="Refresh" name="refresh">&nbsp;&nbsp;
+</form>
+</blockquote>
+</body>
+</html>

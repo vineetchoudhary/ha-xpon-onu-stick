@@ -15,11 +15,11 @@
 
 ## 2. Check the readings
 
-Open the device to see **22 entities**. Measurements appear under **Sensors** and device details under **Diagnostic**. See the [screenshots](screenshots.md).
+Open the device to see **22 entities in GPON**, or **18 common entities plus one per LLID index in EPON** (20 for the captured two-index table). Mode is detected automatically. Measurements appear under **Sensors** and device details under **Diagnostic**. See the [screenshots](screenshots.md).
 
 ## 3. Open the options
 
-Open **Settings → Devices & services → XPON ONU Stick** and select the settings gear. Choose **Refresh interval** or **Status limits**.
+Open **Settings → Devices & services → XPON ONU Stick** and select the settings gear. Choose **Refresh interval**, **Status limits**, or **Session Settings**.
 
 ## 4. Set the refresh interval
 
@@ -45,12 +45,17 @@ Changing the address preserves entities for the same stick. Add a different stic
 
 Select **Add card → XPON ONU Stick** in a dashboard. See [card options](dashboard.md), or use the [built-in card example](../examples/dashboard.yaml).
 
+## Session Settings
+
+Enable **Log out after a successful poll** (`logout_after_poll`) to end the management session after reading both status pages. It is **disabled by default**, including for existing configurations without this option. Enabling it may also terminate another client's web session on devices with shared sessions. Saving reloads the integration; refresh intervals and status limits are preserved.
+
 ## Troubleshooting
 
 - **Integration missing:** check installation and restart Home Assistant.
 - **Connection or login fails:** check the address, network access, and credentials.
 - **All sensors unavailable:** check both status pages and the [device identity](behavior.md#device-identity).
 - **Reading unknown:** check its `parse_error` attribute and **Settings → System → Logs**. Other valid readings keep updating.
+- **Logout warning:** when logout is enabled, this is noncritical; readings still update and logout is retried after the next successful poll.
 - **Card missing:** reload the browser page after updating the integration.
 
 Use the [live check](development.md#test-the-real-stick) to read the stick directly.

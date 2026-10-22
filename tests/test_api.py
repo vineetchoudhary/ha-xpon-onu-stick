@@ -202,13 +202,16 @@ def test_mac_identity():
         normalize_mac("not-a-mac")
 
 
-async def test_client_reads_only_two_pages(onu_server):
+async def test_client_reads_two_pages_without_logging_out_by_default(onu_server):
     host, _, requests = onu_server
     async with aiohttp.ClientSession() as session:
         status = await OnuClient(session, host).async_get_status()
     assert len(status.values) == 16
     assert status.mac_address == "02:00:00:00:00:01"
-    assert requests == [("GET", "/status.asp", None), ("GET", "/status_pon.asp", None)]
+    assert requests == [
+        ("GET", "/status.asp", None),
+        ("GET", "/status_pon.asp", None),
+    ]
 
 
 async def test_outage_errors_are_logged_once_and_reset_after_recovery(
@@ -240,7 +243,14 @@ async def test_outage_errors_are_logged_once_and_reset_after_recovery(
         await client.async_get_status()
         errors = [record for record in caplog.records if record.levelno == logging.ERROR]
         assert len(errors) == 2
-    assert requests == [("GET", "/status.asp", None), ("GET", "/status_pon.asp", None)] * 4
+    assert (
+        requests
+        == [
+            ("GET", "/status.asp", None),
+            ("GET", "/status_pon.asp", None),
+        ]
+        * 4
+    )
 
 
 @pytest.mark.parametrize("mac", ["not-a-mac", "N/A"])

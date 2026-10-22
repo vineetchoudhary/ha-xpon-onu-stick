@@ -44,7 +44,27 @@ async def test_live_check_prints_complete_status(onu_server, tmp_path):
     assert readings["device_name"] == "AOT5222ZY"
     assert readings["rx_power"] == -26.382721
     assert readings["onu_id"] == 0
-    assert requests == [("GET", "/status.asp", None), ("GET", "/status_pon.asp", None)]
+    assert requests == [
+        ("GET", "/status.asp", None),
+        ("GET", "/status_pon.asp", None),
+    ]
+
+
+async def test_live_check_prints_epon_status(onu_server, tmp_path, epon_device_html, epon_pon_html):
+    host, state, requests = onu_server
+    state.update(device=epon_device_html, pon=epon_pon_html)
+    returncode, stdout, stderr = await run_status_check(host, tmp_path)
+    assert returncode == 0, stderr
+    readings = json.loads(stdout)
+    assert readings["device_name"] is None
+    assert readings["rx_power"] == -18.1
+    assert readings["epon_llid_0_status"] == 1
+    assert readings["epon_llid_1_status"] == 0
+    assert "onu_state" not in readings
+    assert requests == [
+        ("GET", "/status.asp", None),
+        ("GET", "/status_pon.asp", None),
+    ]
 
 
 async def test_live_check_reports_outage_readings_and_field_error(

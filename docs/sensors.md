@@ -18,12 +18,15 @@
 | GPON Status | ONU state | Original firmware text, e.g. `O5` or `Operation State(O5)` |
 | GPON Status | ONU ID | Integer, including `0` |
 | GPON Status | LOID status | Text, e.g. `Initial Status` |
+| EPON LLID Status | EPON LLID `<index>` status | Raw nonnegative integer code, one sensor per reported index |
 
 Measurements support history and statistics. Uptime and device details keep the firmware's original text.
 
+Every sensor includes a `pon_mode` attribute (`gpon` or `epon`). GPON exposes 22 entities. EPON exposes 18 common entities plus one per LLID index, without GPON ONU state, ONU ID, LOID status, or ONU registration status. LLID codes have no unit or measurement statistics and are not mapped to connected/disconnected states without firmware documentation.
+
 ## Friendly status sensors
 
-Five measurement statuses and one ONU registration status explain the readings. Their attributes include descriptions and limits. Rx status also shows the margin to each limit.
+Five measurement statuses and, in GPON mode, one ONU registration status explain the readings. Their attributes include descriptions and limits. Rx status also shows the margin to each limit.
 
 Missing readings and supported formats are covered in [firmware values](firmware-values.md).
 
@@ -40,6 +43,8 @@ Change these in [Status limits](configuration.md#5-adjust-the-status-limits) usi
 | Bias current | Limits not set until you provide both limits from your module's specification. Values within the configured range are Normal. Values outside it are Low current or High current. A negative reading is Invalid reading. |
 
 These limits are advisory, not factory alarms. Optical defaults use GPON Class B+ references. Temperature and voltage use generic SFP guidelines. Set both bias current limits from your module's specifications.
+
+EPON retains the same defaults; set optical limits to match your EPON module's specifications.
 
 Set the Rx warning margin to `0` to disable weak and strong warnings. For example, `-26.38 dBm` is inside the default range but shows **Weak signal** because it is near the lower limit.
 
