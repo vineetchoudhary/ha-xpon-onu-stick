@@ -30,9 +30,11 @@ def sensor_for_key(hass, entry, key):
     return hass.states.get(entity_id) if entity_id else None
 
 
-async def add_device(hass, host):
+async def add_device(hass, host, username="", password=""):
     result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": "user"}, data={CONF_HOST: host}
+        DOMAIN,
+        context={"source": "user"},
+        data={CONF_HOST: host, CONF_USERNAME: username, CONF_PASSWORD: password},
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
@@ -58,7 +60,7 @@ async def set_session_option(hass, entry, enabled):
 
 
 async def test_initial_setup_requires_an_address_and_never_uses_a_fallback(hass):
-    with patch("custom_components.xpon_onu_stick.config_flow.OnuClient.async_get_status") as fetch:
+    with patch("custom_components.xpon_onu_stick.api.OnuClient.async_get_status") as fetch:
         result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": "user"})
         assert result["type"] is FlowResultType.FORM
         schema = result["data_schema"]
@@ -254,7 +256,8 @@ async def test_epon_partial_errors_still_update_and_logout(
 ):
     host, state, requests = onu_server
     state.update(device=epon_device_html, pon=epon_pon_html)
-    entry = await add_device(hass, host)
+    state["form_auth"] = ("reader", "secret")
+    entry = await add_device(hass, host, "reader", "secret")
     await set_session_option(hass, entry, True)
     state["logout_status"] = logout_status
     state["pon"] = (
@@ -274,11 +277,8 @@ async def test_epon_partial_errors_still_update_and_logout(
     assert sensor_for_key(hass, entry, "temperature").state == "42.0"
     assert sensor_for_key(hass, entry, "epon_llid_1_status").state == "0"
     assert not hass.config_entries.flow.async_progress()
-    assert requests == [
-        ("GET", "/status.asp", None),
-        ("GET", "/status_pon.asp", None),
-        ("POST", "/boaform/admin/formLogout", None),
-    ]
+    assert requests[-1][0:2] == ("POST", "/boaform/admin/formLogout")
+    assert len(state["logout_posts"]) == 2
     state.update(pon=epon_pon_html, logout_status=200)
     await entry.runtime_data.async_refresh()
     assert sensor_for_key(hass, entry, "rx_power").state == "-18.1"
@@ -344,7 +344,8 @@ async def test_logout_failure_does_not_block_setup_or_updates(
     if mode == "epon":
         state["pon"] = epon_pon_html
     state["logout_status"] = 403
-    entry = await add_device(hass, host)
+    state["form_auth"] = ("reader", "secret")
+    entry = await add_device(hass, host, "reader", "secret")
     assert not state["logout_posts"]
     await set_session_option(hass, entry, True)
     assert entry.state is ConfigEntryState.LOADED
@@ -587,7 +588,7 @@ async def test_duplicate_device(hass, onu_server):
 )
 async def test_flow_errors(hass, error, expected):
     with patch(
-        "custom_components.xpon_onu_stick.config_flow.OnuClient.async_get_status",
+        "custom_components.xpon_onu_stick.api.OnuClient.async_get_status",
         side_effect=error,
     ):
         result = await hass.config_entries.flow.async_init(
@@ -598,7 +599,7 @@ async def test_flow_errors(hass, error, expected):
 
 
 async def test_bad_host_and_missing_username_never_fetch(hass):
-    with patch("custom_components.xpon_onu_stick.config_flow.OnuClient.async_get_status") as fetch:
+    with patch("custom_components.xpon_onu_stick.api.OnuClient.async_get_status") as fetch:
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": "user"}, data={CONF_HOST: "http://onu/reboot.asp"}
         )
@@ -638,7 +639,8 @@ async def test_session_option_toggles_logout_and_preserves_other_options(
     host, state, requests = onu_server
     if mode == "epon":
         state["pon"] = epon_pon_html
-    entry = await add_device(hass, host)
+    state["form_auth"] = ("reader", "secret")
+    entry = await add_device(hass, host, "reader", "secret")
     assert not state["logout_posts"]
     hass.config_entries.async_update_entry(
         entry, options={CONF_SCAN_INTERVAL: 60, "rx_power_min": -30}
@@ -648,6 +650,7 @@ async def test_session_option_toggles_logout_and_preserves_other_options(
     for enabled in (True, False):
         old_coordinator = entry.runtime_data
         requests.clear()
+        state["logout_posts"].clear()
         await set_session_option(hass, entry, enabled)
         assert entry.runtime_data is not old_coordinator
         assert entry.options == {
@@ -657,34 +660,37 @@ async def test_session_option_toggles_logout_and_preserves_other_options(
         }
         assert entry.runtime_data.update_interval.total_seconds() == 60
         await entry.runtime_data.async_refresh()
-        expected = [("GET", "/status.asp", None), ("GET", "/status_pon.asp", None)]
-        if enabled:
-            expected.append(("POST", "/boaform/admin/formLogout", None))
-        assert requests == expected * 2  # Reload and subsequent poll.
+        assert len(state["logout_posts"]) == (2 if enabled else 0)
+        assert sum(path == "/status_pon.asp" for _, path, _ in requests) == 2
         assert {sensor.entity_id for sensor in hass.states.async_all("sensor")} == original_ids
         assert entry.runtime_data.last_update_success
 
 
 @pytest.mark.parametrize("step", ["reconfigure", "reauth"])
 @pytest.mark.parametrize("enabled", [False, True])
-async def test_connection_validation_respects_session_option(hass, onu_server, step, enabled):
+async def test_connection_validation_never_logs_out(hass, onu_server, step, enabled):
     host, state, _ = onu_server
-    entry = await add_device(hass, host)
+    state["form_auth"] = ("reader", "secret")
+    entry = await add_device(hass, host, "reader", "secret")
     await set_session_option(hass, entry, enabled)
     state["logout_posts"].clear()
     if step == "reconfigure":
         result = await hass.config_entries.flow.async_init(
-            DOMAIN, context={"source": step, "entry_id": entry.entry_id}, data={CONF_HOST: host}
+            DOMAIN,
+            context={"source": step, "entry_id": entry.entry_id},
+            data={CONF_HOST: host, CONF_USERNAME: "reader", CONF_PASSWORD: "secret"},
         )
     else:
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": step, "entry_id": entry.entry_id}, data=entry.data
         )
-        result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {CONF_USERNAME: "reader", CONF_PASSWORD: "secret"}
+        )
     assert result["reason"] == f"{step}_successful"
     await hass.async_block_till_done()
     assert entry.options[CONF_LOGOUT_AFTER_POLL] is enabled
-    assert len(state["logout_posts"]) == (2 if enabled else 0)
+    assert len(state["logout_posts"]) == (1 if enabled else 0)  # Coordinator reload only.
 
 
 async def open_status_limits(hass, entry):

@@ -1,0 +1,95 @@
+
+<html><!-- Copyright (c) Realtek Semiconductor Corp., 2003. All Rights Reserved. ---><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<script src="./login.asp_files/md5.js.download" type="text/javascript"></script>
+<script>
+function setpass()
+{
+
+}
+function mlhandle()
+{
+ document.formML.submit();
+ parent.location.reload();
+}
+</script>
+</head>
+
+<body>
+<blockquote>
+
+<form action="http://192.0.2.2/boaform/admin/formLogin" method="POST" name="cmlogin">
+<input type="hidden" name="challenge">
+
+<table cellspacing="0" cellpadding="0" width="100%" border="0">
+  <tbody>
+<!--
+  <TR vAlign=top>
+    <TD width="50%"><A><IMG height=60 src="LoginFiles/realtek.jpg" width=170 useMap=#n1E6.$Body.0.1E8 border=0></A></TD>
+  </TR>
+-->
+  </tbody>
+</table>
+
+<center>
+  <table cellspacing="0" cellpadding="0" border="0">
+    <tbody>
+      <tr valign="top">
+        <td width="350"><br>
+          <table cellspacing="0" cellpadding="0" width="100%" border="0">
+            <tbody>
+              <tr valign="top">
+                <td valign="center" width="29%"><div align="right"><img height="32" src="./login.asp_files/locker.gif" width="32"><br><br></div></td>
+                <td valign="center" width="5%"></td>
+                <td valign="center" width="71%"><font color="#0000FF" size="2">Input username and password</font><br><br></td>
+       </tr>
+              <tr valign="top">
+                <td valign="center" width="29%"><div align="right"><font color="#0000FF" size="2">UserName:</font></div></td>
+                <td valign="center" width="5%"></td>
+                <td valign="center" width="71%"><font><input maxlength="30" size="20" name="username"></font></td>
+              </tr>
+              <tr valign="top">
+                <td valign="center" width="29%"><div align="right"><font color="#0000FF" size="2">Password:</font></div></td>
+                <td valign="center" width="5%"></td>
+                <td valign="center" width="71%"><font><input type="password" maxlength="30" size="20" name="password"></font></td>
+       </tr>
+
+              <tr valign="top">
+                <td valign="center" width="29%"></td>
+                <td valign="center" width="5%"></td>
+                <td valign="center" width="71%"><font size="2"></font><br><input type="submit" value="Login" name="save" onclick="setpass()"></td>
+       </tr>
+            </tbody>
+   </table>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</center>
+<div align="center"></div>
+<input type="hidden" value="/admin/login.asp" name="submit-url">
+</form>
+</blockquote>
+
+<blockquote>
+<form action="http://192.0.2.2/boaform/admin/formLoginMultilang" method="POST" name="formML">
+<center><table cellspacing="0" cellpadding="0" border="0">
+<tbody><tr><td>
+<!--
+ <td><div align=right><font color=#0000FF size=2>Language Select:</font></div></td>
+<td>&nbsp;&nbsp;</td>
+<td><font size=2><select size="1" name="loginSelinit" onChange="mlhandle();">
+<option selected value="0">English</option>
+<option  value="1">繁體中文</option>
+<option  value="2">簡体中文</option>
+</select></font></td>
+
+-->
+</td></tr>
+</tbody></table></center>
+</form>
+</blockquote>
+
+
+
+</body></html>

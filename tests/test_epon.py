@@ -255,7 +255,7 @@ async def test_epon_authentication_and_session_expiry(
         status = await client.async_get_status()
     assert status.values["epon_llid_0_status"] == 1
     assert len(state["login_posts"]) == (3 if auth_type == "form" else 0)
-    assert len(state["logout_posts"]) == 2
+    assert len(state["logout_posts"]) == (2 if auth_type == "form" else 0)
     assert not state["sessions"]
     assert all(
         (method == "GET" and path in {"/status.asp", "/status_pon.asp", "/admin/login.asp"})

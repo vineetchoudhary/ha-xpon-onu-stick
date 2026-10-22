@@ -1,0 +1,80 @@
+<html>
+<! Copyright (c) Realtek Semiconductor Corp., 2003. All Rights Reserved. ->
+<head>
+<meta http-equiv="Content-Type" content="text/html" charset="utf-8">
+<script src="md5.js" type="text/javascript"></script>
+<SCRIPT>
+function setpass()
+{
+
+}
+function mlhandle()
+{
+ document.formML.submit();
+ parent.location.reload();
+}
+</SCRIPT>
+</head>
+
+
+<body>
+<blockquote>
+
+
+<form action=/boaform/admin/formLogin method=POST name="cmlogin">
+<input type="hidden" name="challenge">
+
+
+<TABLE cellSpacing=0 cellPadding=0 width="100%" border=0>
+  <TBODY>
+  <TR vAlign=top>
+    <TD width="50%"></TD>
+  </TR>
+  </TBODY>
+</TABLE>
+
+
+<CENTER>
+  <TABLE cellSpacing=0 cellPadding=0 border=0>
+    <TBODY>
+      <TR vAlign=top>
+        <TD width=350><BR>
+          <TABLE cellSpacing=10 cellPadding=0 width="100%" border=0 style="border:1px solid #ddd">
+            <TBODY>
+              <TR vAlign=top>
+                <TD vAlign=center width="100%" colspan="3"><DIV align=center><IMG src="../topbar.gif" style="display:table-cell; margin:auto;"><BR><BR></DIV></TD>
+        </TR>
+              <TR vAlign=top>
+                <TD vAlign=center width="15%"><DIV align=right><FONT color=#0000FF size=2>User:</FONT></DIV></TD>
+                <TD vAlign=center width="5%"></TD>
+                <TD vAlign=center width="80%"><FONT><INPUT maxLength=30 size=20 name=username></FONT></TD>
+              </TR>
+              <TR vAlign=top>
+                <TD vAlign=center width="15%"><DIV align=right><FONT color=#0000FF size=2>Password:</FONT></DIV></TD>
+                <TD vAlign=center width="5%"></TD>
+                <TD vAlign=center width="80%"><FONT><INPUT type=password maxLength=30 size=20 name=password></FONT></TD>
+       </TR>
+              <TR vAlign=top>
+                <TD vAlign=center width="15%"></TD>
+                <TD vAlign=center width="5%"></TD>
+                <TD vAlign=center width="80%"><FONT size=2></FONT><INPUT type=submit value="Login" name=save onClick=setpass(this)></TD>
+       </TR>
+            </TBODY>
+   </TABLE>
+        </TD>
+      </TR>
+    </TBODY>
+  </TABLE>
+</CENTER>
+<DIV align=center></DIV>
+<input type="hidden" value="/admin/login.asp" name="submit-url">
+</form>
+</blockquote>
+<blockquote>
+<form id="change-language-form" action=/boaform/admin/langSel method=POST name="mlSet">
+<input type="submit" value="中文/english" name="lang" style="margin-left: 47%;">
+<input type="hidden" value="/admin/login.asp" name="submit-url">
+</form>
+</blockquote>
+</BODY>
+</HTML>

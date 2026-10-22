@@ -13,7 +13,17 @@ from homeassistant.core import HomeAssistant
 from homeassistant.loader import async_setup as async_setup_loader
 from homeassistant.setup import async_setup_component
 
-FIXTURES = Path(__file__).parent / "fixtures"
+DEVICE_FIXTURES = Path(__file__).parent / "fixtures" / "devices"
+
+
+@pytest.fixture
+def gpon_fixture_dir():
+    return DEVICE_FIXTURES / "odi-dfp-34x-2c2" / "V1.0-220923"
+
+
+@pytest.fixture
+def epon_fixture_dir():
+    return DEVICE_FIXTURES / "bdcom-unknown-model" / "V2.11.00P3T1"
 
 
 @pytest.fixture
@@ -29,23 +39,23 @@ def oversized_integer():
 
 
 @pytest.fixture
-def device_html():
-    return (FIXTURES / "device_status.html").read_text()
+def device_html(gpon_fixture_dir):
+    return (gpon_fixture_dir / "device_status_baseline.html").read_text()
 
 
 @pytest.fixture
-def pon_html():
-    return (FIXTURES / "pon_status.html").read_text()
+def pon_html(gpon_fixture_dir):
+    return (gpon_fixture_dir / "pon_status_baseline.html").read_text()
 
 
 @pytest.fixture
-def epon_device_html():
-    return (FIXTURES / "epon_device_status.html").read_text()
+def epon_device_html(epon_fixture_dir):
+    return (epon_fixture_dir / "device_status.html").read_text()
 
 
 @pytest.fixture
-def epon_pon_html():
-    return (FIXTURES / "epon_pon_status.html").read_text()
+def epon_pon_html(epon_fixture_dir):
+    return (epon_fixture_dir / "pon_status.html").read_text()
 
 
 @pytest.fixture
@@ -60,12 +70,12 @@ def outage_pon_html(pon_html):
 
 
 @pytest.fixture
-def login_html():
-    return (FIXTURES / "login.html").read_text()
+def login_html(gpon_fixture_dir):
+    return (gpon_fixture_dir / "login_baseline.html").read_text()
 
 
 @pytest_asyncio.fixture
-async def onu_server(device_html, pon_html, login_html):
+async def onu_server(device_html, pon_html, login_html, epon_fixture_dir):
     requests = []
     state = {
         "device": device_html,
@@ -83,9 +93,10 @@ async def onu_server(device_html, pon_html, login_html):
         "ip_session": False,
         "ip_authenticated": False,
         "csrf": False,
+        "single_session": False,
         "logout_posts": [],
         "logout_status": 200,
-        "logout_html": (FIXTURES / "logout_success.html").read_text(),
+        "logout_html": (epon_fixture_dir / "logout_success.html").read_text(),
         "logout_redirect": "/admin/login.asp",
     }
 
@@ -120,6 +131,11 @@ async def onu_server(device_html, pon_html, login_html):
         if request.path == "/boaform/admin/formLogin" and request.method == "POST":
             payload = dict(await request.post())
             state["login_posts"].append(payload)
+            if state["single_session"] and (state["sessions"] or state["ip_authenticated"]):
+                return web.Response(
+                    text=(epon_fixture_dir / "login_busy.html").read_text(),
+                    content_type="text/html",
+                )
             if (payload.get("username"), payload.get("password")) != state["form_auth"] or (
                 state["csrf"]
                 and (request.cookies.get("csrf") != "seed" or payload.get("csrf_token") != "seed")

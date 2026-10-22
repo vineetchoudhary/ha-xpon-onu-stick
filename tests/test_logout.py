@@ -54,7 +54,7 @@ async def test_default_poll_does_not_close_another_clients_ip_session(onu_server
 
 @pytest.mark.parametrize("mode", ["gpon", "epon"])
 @pytest.mark.parametrize("auth", ["none", "basic", "cookie", "ip"])
-async def test_every_successful_poll_logs_out(
+async def test_only_owned_form_sessions_are_logged_out(
     onu_server, epon_device_html, epon_pon_html, mode, auth
 ):
     host, state, requests = onu_server
@@ -71,28 +71,31 @@ async def test_every_successful_poll_logs_out(
         for _ in range(2):
             result = await client.async_get_status()
             assert result.pon_mode == mode
-            assert requests[-1][0:2] == ("POST", LOGOUT_PATH)
+            assert requests[-1][0:2] == (
+                ("POST", LOGOUT_PATH) if auth in {"cookie", "ip"} else ("GET", "/status_pon.asp")
+            )
             assert not state["sessions"]
             assert not state["ip_authenticated"]
             assert not client._cookie_jar.filter_cookies(aiohttp.client.URL(host))
-    assert len(state["logout_posts"]) == 2
+    assert len(state["logout_posts"]) == (2 if auth in {"cookie", "ip"} else 0)
     assert len(state["login_posts"]) == (2 if auth in {"cookie", "ip"} else 0)
     for index, logout in enumerate(state["logout_posts"], start=1):
         assert logout["data"] == {"save": "Logout", "submit-url": "/admin/logout.asp"}
         assert logout["referer"] == f"{host}/admin/logout.asp"
         assert logout["session"] == (f"session-{index}" if auth == "cookie" else None)
     if auth == "none":
-        assert requests == POLL_REQUESTS * 2
+        assert requests == POLL_REQUESTS[:2] * 2
 
 
-async def test_logout_closes_an_existing_ip_session_without_a_login(onu_server):
+async def test_enabled_logout_preserves_an_existing_ip_session_without_a_login(onu_server):
     host, state, requests = onu_server
     state.update(form_auth=("reader", "secret"), ip_session=True, ip_authenticated=True)
     async with aiohttp.ClientSession() as session:
         await OnuClient(session, host, logout_after_poll=True).async_get_status()
-    assert requests == POLL_REQUESTS
-    assert not state["ip_authenticated"]
+    assert requests == POLL_REQUESTS[:2]
+    assert state["ip_authenticated"]
     assert not state["login_posts"]
+    assert not state["logout_posts"]
 
 
 @pytest.mark.parametrize("status", [401, 403, 404, 500, 302])
@@ -132,20 +135,31 @@ async def test_logout_http_failure_keeps_readings_and_retries_next_poll(onu_serv
 async def test_http_200_alone_does_not_confirm_logout(onu_server, caplog, body):
     host, state, requests = onu_server
     state["logout_html"] = body
+    state["form_auth"] = ("reader", "secret")
     async with aiohttp.ClientSession() as session:
-        result = await OnuClient(session, host, logout_after_poll=True).async_get_status()
+        result = await OnuClient(
+            session, host, "reader", "secret", logout_after_poll=True
+        ).async_get_status()
     assert result.values["onu_state"] == "O5"
-    assert requests == POLL_REQUESTS
+    assert requests[-1][0:2] == ("POST", LOGOUT_PATH)
+    assert len(state["logout_posts"]) == 1
     assert "Unable to confirm ONU logout" in caplog.text
 
 
 async def test_logout_timeout_keeps_the_successful_snapshot(onu_server, caplog):
-    host, _, requests = onu_server
+    host, state, requests = onu_server
+    state["form_auth"] = ("reader", "secret")
     async with aiohttp.ClientSession() as session:
+        client = OnuClient(session, host, "reader", "secret", logout_after_poll=True)
+        await client.async_get_status(logout_after_poll=False)
+        requests.clear()
         with patch.object(session, "post", side_effect=TimeoutError):
-            result = await OnuClient(session, host, logout_after_poll=True).async_get_status()
+            result = await client.async_get_status()
     assert result.values["onu_state"] == "O5"
-    assert requests == POLL_REQUESTS[:2]
+    assert [(method, path) for method, path, _ in requests] == [
+        ("GET", "/status.asp"),
+        ("GET", "/status_pon.asp"),
+    ]
     assert "Unable to confirm ONU logout" in caplog.text
 
 
@@ -166,11 +180,14 @@ async def test_failed_status_read_does_not_issue_logout(onu_server, failure):
 
 
 async def test_poll_lock_includes_logout(onu_server):
-    host, _, requests = onu_server
+    host, state, requests = onu_server
+    state["form_auth"] = ("reader", "secret")
     logout_started = asyncio.Event()
     allow_logout = asyncio.Event()
     async with aiohttp.ClientSession() as session:
-        client = OnuClient(session, host, logout_after_poll=True)
+        client = OnuClient(session, host, "reader", "secret", logout_after_poll=True)
+        await client.async_get_status(logout_after_poll=False)
+        requests.clear()
         original_logout = client._async_logout
 
         async def delayed_logout():
@@ -186,7 +203,10 @@ async def test_poll_lock_includes_logout(onu_server):
                     await logout_started.wait()
                     second = asyncio.create_task(client.async_get_status())
                     await asyncio.sleep(0)
-                    assert requests == POLL_REQUESTS[:2]
+                    assert [(method, path) for method, path, _ in requests] == [
+                        ("GET", "/status.asp"),
+                        ("GET", "/status_pon.asp"),
+                    ]
                     assert not first.done()
                     assert not second.done()
                     allow_logout.set()
@@ -199,4 +219,5 @@ async def test_poll_lock_includes_logout(onu_server):
                 await asyncio.gather(
                     *(task for task in (first, second) if task), return_exceptions=True
                 )
-    assert requests == POLL_REQUESTS * 2
+    assert len(state["logout_posts"]) == 2
+    assert requests[-1][0:2] == ("POST", LOGOUT_PATH)
