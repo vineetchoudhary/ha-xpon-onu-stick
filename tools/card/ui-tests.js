@@ -45,6 +45,42 @@ test("shows the stick name, firmware, uptime, and connection", async () => {
   equal(toneOf($(card, ".badge")), "tone-ok", "badge tone");
 });
 
+test("renders firmware text as text without executing HTML", async () => {
+  const card = await mount("healthy");
+  window.__onuHtmlExecuted = false;
+  const payload = '\"><img src=x onerror="window.__onuHtmlExecuted=true"><script>window.__onuHtmlExecuted=true</script>';
+  const hass = card._hass;
+  const states = { ...hass.states };
+  for (const key of ["firmware_version", "uptime", "loid_status"]) {
+    const entityId = `sensor.aot5222zy_${key}`;
+    states[entityId] = { ...states[entityId], state: payload };
+  }
+  card.setConfig({ type: `custom:${CARD}`, title: payload });
+  card.hass = { ...hass, states };
+  await tick();
+  equal(text($(card, ".title")), payload, "escaped title");
+  ok(text($(card, ".subtitle")).includes(payload), "firmware text remains visible");
+  equal($$(card, "img, script").length, 0, "no injected elements");
+  equal(window.__onuHtmlExecuted, false, "untrusted text did not execute");
+});
+
+test("keeps EPON optical readings without claiming GPON registration", async () => {
+  const card = await mount("healthy");
+  const hass = card._hass;
+  const entities = { ...hass.entities };
+  const states = { ...hass.states };
+  for (const key of ["onu_state", "onu_id", "loid_status", "onu_registration_status"]) {
+    delete entities[`sensor.aot5222zy_${key}`];
+    delete states[`sensor.aot5222zy_${key}`];
+  }
+  card.hass = { ...hass, entities, states };
+  await tick();
+  equal(text($(card, ".value-xl")), "-21.84dBm", "optical reading");
+  equal($$(card, ".tile").length, 4, "common measurement tiles");
+  ok(!text($(card, ".badge")).includes("Connected"), "no invented registration state");
+  ok(!$$(card, ".detail .key").map(text).includes("ONU ID"), "GPON-only detail omitted");
+});
+
 test("rates Rx power against the configured limits", async () => {
   const card = await mount("healthy");
   equal(text($(card, ".value-xl")), "-21.84dBm", "Rx value");

@@ -11,15 +11,25 @@ All sensors share two status reads every **30 seconds**. Set an interval from **
 - `GET /status.asp` for device readings.
 - `GET /status_pon.asp` for PON readings.
 - When login is needed, `GET /admin/login.asp` and `POST /boaform/admin/formLogin`.
-- Only when **Session Settings → Log out after a successful poll** is enabled, `POST /boaform/admin/formLogout` with `save=Logout` and `submit-url=/admin/logout.asp` after successfully reading both pages.
+- Only when **Session settings → Log out after a successful poll** is enabled and the integration opened the session, `POST /boaform/admin/formLogout` with `save=Logout` and `submit-url=/admin/logout.asp` after successfully reading both pages.
 
 HTTP Basic authentication is also supported. The integration does not change device settings or submit Refresh forms.
 
-Logout is disabled by default (`logout_after_poll: false`), including for existing entries without this option. Sessions are reused where the firmware supports it. Devices may share sessions between clients, so enabling logout can also terminate another client's web session.
+Logout is disabled by default (`logout_after_poll: false`), including for existing entries without this option. A validated client retains its own cookies and login state across setup, polling, and options reloads. Failed connection changes do not replace a working client. Retained login data is released when the integration is removed.
 
-When enabled, logout runs after every successful poll for anonymous access, HTTP Basic, and form login. Partial field errors still count as a successful poll. Failed status reads do not trigger logout. Initial setup validation uses the disabled default; reconfiguration and reauthentication honor the saved setting. The next poll signs in again if needed; requests for one client are serialized through logout.
+When enabled, logout closes only a form-login session established by this integration. Anonymous reads, HTTP Basic authentication, and a pre-existing session do not trigger logout. Partial field errors still count as a successful poll. Failed status reads do not trigger logout. Setup, reconfiguration, and reauthentication validation never log out. Coordinator polling honors the saved setting.
+
+Login, status reads, and optional logout share a lock for the same normalized device address within the Home Assistant process. This prevents a validation request from closing a session during another poll. Other processes and alternate addresses for the same ONU are outside that lock. Firmware with one shared IP session may still let another browser join the integration's session, so enable logout only when needed.
+
+The captured EPON firmware can return an already-logged-in error. The integration does not force that session closed. If it cannot read status, sign out of the other management session and retry.
 
 The captured success response contains `OK: logout successfully!`. A failed or unconfirmed logout is noncritical: fresh readings remain available, a warning is logged, and no reauthentication prompt is raised. Session cookies are cleared after confirmed logout; otherwise they are retained for the next poll, which tries logout again after reading status.
+
+## Authentication boundaries
+
+Requests use only the configured HTTP(S) origin and the fixed status, login, and logout paths above. A login form may use the expected relative path or an absolute URL on that same origin. Forms targeting another origin, credentials in the URL, query strings, fragments, and other action paths are rejected. Redirects are not followed. Scripts and form actions from the pages are never executed. A dedicated transport with automatic cookies disabled keeps each client's login cookies separate from other devices and integrations.
+
+Responses are limited to 256 KiB of decoded content. HTTPS uses normal certificate verification. Use HTTPS when the device supports it. HTTP sends authentication over the local network without encryption.
 
 ## PON mode
 

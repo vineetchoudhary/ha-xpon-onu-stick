@@ -19,7 +19,7 @@ Open the device to see **22 entities in GPON**, or **18 common entities plus one
 
 ## 3. Open the options
 
-Open **Settings → Devices & services → XPON ONU Stick** and select the settings gear. Choose **Refresh interval**, **Status limits**, or **Session Settings**.
+Open **Settings → Devices & services → XPON ONU Stick** and select the settings gear. Choose **Refresh interval**, **Status limits**, or **Session settings**.
 
 ## 4. Set the refresh interval
 
@@ -45,14 +45,17 @@ Changing the address preserves entities for the same stick. Add a different stic
 
 Select **Add card → XPON ONU Stick** in a dashboard. See [card options](dashboard.md), or use the [built-in card example](../examples/dashboard.yaml).
 
-## Session Settings
+## Session settings
 
-Enable **Log out after a successful poll** (`logout_after_poll`) to end the management session after reading both status pages. It is **disabled by default**, including for existing configurations without this option. Enabling it may also terminate another client's web session on devices with shared sessions. Saving reloads the integration; refresh intervals and status limits are preserved.
+Enable **Log out after a successful poll** to close the integration's own form-login session after reading both status pages. It is **disabled by default**, including for existing configurations. Setup and connection validation never log out. Direct access, HTTP Basic authentication, and sessions the integration did not establish are left open.
+
+Saving reloads the integration and preserves refresh intervals and status limits. Firmware with shared IP sessions may let a browser share the integration's login, so enable this option only when needed. See [session behavior](behavior.md#requests).
 
 ## Troubleshooting
 
 - **Integration missing:** check installation and restart Home Assistant.
 - **Connection or login fails:** check the address, network access, and credentials.
+- **Already logged in:** sign out of the other management session and retry. The integration does not force another session closed.
 - **All sensors unavailable:** check both status pages and the [device identity](behavior.md#device-identity).
 - **Reading unknown:** check its `parse_error` attribute and **Settings → System → Logs**. Other valid readings keep updating.
 - **Logout warning:** when logout is enabled, this is noncritical; readings still update and logout is retried after the next successful poll.

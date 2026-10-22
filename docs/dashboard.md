@@ -37,3 +37,5 @@ Add it if missing, then reload the browser page. Enable **Advanced mode** in you
 ## Built-in cards
 
 Paste [examples/dashboard.yaml](../examples/dashboard.yaml) into a **Manual** card. Replace the sample `sensor.aot5222zy_*` entity IDs with those shown for your stick.
+
+For EPON, use the [raw LLID example](../examples/dashboard-epon.yaml) and replace its sample entity IDs. Include only indices reported by your device. The numeric codes are not connection-status labels.

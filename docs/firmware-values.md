@@ -1,6 +1,6 @@
 # Firmware values
 
-Tested with `V1.0-220923`; EPON parsing also uses captured `V2.11.00P3T1` pages. Other firmware versions may use different formats.
+Tested with `V1.0-220923`. EPON parsing also uses captured `V2.11.00P3T1` pages. Other firmware versions may use different formats.
 
 ## Accepted values
 
@@ -16,7 +16,7 @@ Tested with `V1.0-220923`; EPON parsing also uses captured `V2.11.00P3T1` pages.
 | ONU state | Original text. Friendly status recognizes `O1` to `O7` and labels such as `Operation State(O5)`. |
 | Device details, LOID status, and uptime | Original firmware text. |
 
-Numbers accept explicit signs, extra whitespace, and case variations in units. Scientific notation and decimal commas are not supported.
+Measurement numbers accept explicit signs, extra whitespace, and case variations in units. Scientific notation and decimal commas are not supported. LLID indices and codes accept ASCII decimal digits only, up to 64 digits to bound corrupt input. Valid `0` readings are preserved.
 
 ## Unknown readings
 

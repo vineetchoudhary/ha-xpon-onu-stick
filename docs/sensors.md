@@ -24,6 +24,8 @@ Measurements support history and statistics. Uptime and device details keep the 
 
 Every sensor includes a `pon_mode` attribute (`gpon` or `epon`). GPON exposes 22 entities. EPON exposes 18 common entities plus one per LLID index, without GPON ONU state, ONU ID, LOID status, or ONU registration status. LLID codes have no unit or measurement statistics and are not mapped to connected/disconnected states without firmware documentation.
 
+Each integration entry can register up to 256 LLID sensors, including indices seen previously. This prevents corrupt, constantly changing indices from creating unlimited entities. Existing indices and common measurements continue updating when the limit is reached.
+
 ## Friendly status sensors
 
 Five measurement statuses and, in GPON mode, one ONU registration status explain the readings. Their attributes include descriptions and limits. Rx status also shows the margin to each limit.
@@ -44,7 +46,7 @@ Change these in [Status limits](configuration.md#5-adjust-the-status-limits) usi
 
 These limits are advisory, not factory alarms. Optical defaults use GPON Class B+ references. Temperature and voltage use generic SFP guidelines. Set both bias current limits from your module's specifications.
 
-EPON retains the same defaults; set optical limits to match your EPON module's specifications.
+EPON retains the same defaults. Set optical limits to match your EPON module's specifications.
 
 Set the Rx warning margin to `0` to disable weak and strong warnings. For example, `-26.38 dBm` is inside the default range but shows **Weak signal** because it is near the lower limit.
 

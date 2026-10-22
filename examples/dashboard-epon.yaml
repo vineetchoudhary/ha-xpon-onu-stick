@@ -1,0 +1,11 @@
+type: entities
+title: EPON status
+entities:
+  - entity: sensor.xpon_onu_02_00_00_00_00_01_rx_power
+    name: Receive power
+  - entity: sensor.xpon_onu_02_00_00_00_00_01_temperature
+    name: Temperature
+  - entity: sensor.xpon_onu_02_00_00_00_00_01_epon_llid_0_status
+    name: LLID index 0 (raw code)
+  - entity: sensor.xpon_onu_02_00_00_00_00_01_epon_llid_1_status
+    name: LLID index 1 (raw code)
