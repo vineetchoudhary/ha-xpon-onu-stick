@@ -22,9 +22,9 @@
 
 Measurements support history and statistics. Uptime and device details keep the firmware's original text.
 
-Every sensor includes a `pon_mode` attribute (`gpon` or `epon`). GPON exposes 22 entities. EPON exposes 18 common entities plus one per LLID index, without GPON ONU state, ONU ID, LOID status, or ONU registration status. LLID codes have no unit or measurement statistics and are not mapped to connected/disconnected states without firmware documentation.
+Every sensor includes `pon_mode` (`gpon` or `epon`). GPON has 22 entities. EPON has 18 common entities plus one per LLID index, without GPON registration sensors. LLID codes are raw diagnostics, without connection labels, units, or measurement statistics.
 
-Each integration entry can register up to 256 LLID sensors, including indices seen previously. This prevents corrupt, constantly changing indices from creating unlimited entities. Existing indices and common measurements continue updating when the limit is reached.
+Each entry can register up to 256 LLID sensors, including previously seen indices. Existing sensors keep updating at this limit.
 
 ## Friendly status sensors
 

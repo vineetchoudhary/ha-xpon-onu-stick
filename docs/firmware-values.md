@@ -1,7 +1,5 @@
 # Firmware values
 
-Tested with `V1.0-220923`. EPON parsing also uses captured `V2.11.00P3T1` pages. Other firmware versions may use different formats.
-
 ## Accepted values
 
 | Reading | Format |
@@ -31,8 +29,6 @@ For example, Tx power `-inf dBm` shows as **Unknown** in Home Assistant and a da
 See [connection behavior](behavior.md#missing-or-invalid-readings) for recovery and device-level failures.
 
 ## References
-
-Public references do not list every possible firmware value.
 
 - [RTL960x firmware notes](https://github.com/Anime4000/RTL960x/blob/main/Firmware/DFP-34X-2C2/README.md).
 - [ODI compatibility manual](https://ae01.alicdn.com/kf/Sb6d6eb6f38084922861fabb044133dfel.pdf).

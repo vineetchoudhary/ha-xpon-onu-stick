@@ -23,13 +23,11 @@ Select a reading to open its details and history. The card uses Home Assistant d
 
 See the [light and dark previews](screenshots.md#dashboard-card).
 
-In EPON mode, common optical and system readings are available to the card. Its registration badge and ONU details are designed for GPON; they do not interpret EPON LLID status. Add the LLID sensors to a built-in Entities card to view their raw codes.
-
 ## Custom element not found
 
 Open **Settings → Dashboards → ⋮ → Resources**. Check for this resource:
 
-- URL: `/xpon_onu_stick/xpon-onu-stick-card.js?v=6.0.0`
+- URL: `/xpon_onu_stick/xpon-onu-stick-card.js?v=0.6.1`
 - Type: **JavaScript module**
 
 Add it if missing, then reload the browser page. Enable **Advanced mode** in your profile if Resources is hidden.
@@ -38,4 +36,4 @@ Add it if missing, then reload the browser page. Enable **Advanced mode** in you
 
 Paste [examples/dashboard.yaml](../examples/dashboard.yaml) into a **Manual** card. Replace the sample `sensor.aot5222zy_*` entity IDs with those shown for your stick.
 
-For EPON, use the [raw LLID example](../examples/dashboard-epon.yaml) and replace its sample entity IDs. Include only indices reported by your device. The numeric codes are not connection-status labels.
+EPON uses the same optical and system readings. The registration badge applies to GPON. Add the [raw LLID example](../examples/dashboard-epon.yaml) to see EPON codes, replacing the sample entity IDs with your device's indices.

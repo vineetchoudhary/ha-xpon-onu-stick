@@ -15,7 +15,7 @@
 
 ## 2. Check the readings
 
-Open the device to see **22 entities in GPON**, or **18 common entities plus one per LLID index in EPON** (20 for the captured two-index table). Mode is detected automatically. Measurements appear under **Sensors** and device details under **Diagnostic**. See the [screenshots](screenshots.md).
+Mode is detected automatically. GPON has **22 entities**. EPON has **18 common entities plus one per LLID index** (20 with two LLIDs). Measurements appear under **Sensors** and device details under **Diagnostic**. See the [screenshots](screenshots.md).
 
 ## 3. Open the options
 
@@ -47,9 +47,9 @@ Select **Add card → XPON ONU Stick** in a dashboard. See [card options](dashbo
 
 ## Session settings
 
-Enable **Log out after a successful poll** to close the integration's own form-login session after reading both status pages. It is **disabled by default**, including for existing configurations. Setup and connection validation never log out. Direct access, HTTP Basic authentication, and sessions the integration did not establish are left open.
+**Log out after a successful poll** is disabled by default. Enable it to close the integration's own form-login session after reading both status pages. Connection validation never logs out.
 
-Saving reloads the integration and preserves refresh intervals and status limits. Firmware with shared IP sessions may let a browser share the integration's login, so enable this option only when needed. See [session behavior](behavior.md#requests).
+Some firmware shares the login with browsers on the same IP, so enable this only when needed. See [session behavior](behavior.md#requests).
 
 ## Troubleshooting
 

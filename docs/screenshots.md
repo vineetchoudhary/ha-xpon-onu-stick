@@ -1,6 +1,6 @@
 # Screenshots
 
-The screenshots show the tested GPON installation. EPON replaces the GPON registration sensors with raw LLID readings. The options screenshot predates 6.0.0, which also adds **Session settings** alongside **Refresh interval** and **Status limits**.
+These examples show GPON. The older options screenshot omits **Session settings**, which is now available alongside **Refresh interval** and **Status limits**.
 
 <table>
   <tr>
