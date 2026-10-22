@@ -36,4 +36,6 @@ These use related hardware or web pages. Check compatibility below before using 
 
 Use the [live check](development.md#test-the-real-stick) to read the device directly.
 
+To request support, collect the [device HTML files](device-support.md) and open a **New device support** issue.
+
 References: [firmware notes](https://github.com/Anime4000/RTL960x/blob/main/Firmware/DFP-34X-2C2/README.md), [firmware archive](https://www.tripleoxygen.net/files/devices/odi/dfp-34x-2c2/firmware/), and [hardware reference](https://hack-gpon.org/ont-odi-realtek-dfp-34x-2c2/).

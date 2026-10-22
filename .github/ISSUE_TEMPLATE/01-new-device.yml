@@ -1,0 +1,87 @@
+name: New device support
+description: Request support for another ONU model or firmware.
+title: "[Device support] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Follow the [device HTML guide](https://github.com/vineetchoudhary/ha-xpon-onu-stick/blob/master/docs/device-support.md) before attaching files.
+        Save the individual frame pages, including login/logout pages and responses where used.
+        Issues and attachments are public. Remove credentials and personal identifiers before uploading.
+  - type: input
+    id: model
+    attributes:
+      label: Manufacturer and model
+      description: Use the model printed on the device or product listing. Say Unknown if unavailable.
+      placeholder: ODI DFP-34X-2C2
+    validations:
+      required: true
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware version
+      description: Copy the full version from Device Status, or enter Unknown.
+      placeholder: V1.0-220923
+    validations:
+      required: true
+  - type: dropdown
+    id: pon-mode
+    attributes:
+      label: PON mode
+      options:
+        - GPON
+        - EPON
+        - Unknown
+    validations:
+      required: true
+  - type: dropdown
+    id: authentication
+    attributes:
+      label: How do you sign in to the web interface?
+      options:
+        - No login required
+        - Username and password form on a web page
+        - HTTP Basic authentication (browser login popup)
+        - Unknown
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Home Assistant and integration versions
+      description: Enter Not installed if you have not tried the integration yet.
+      placeholder: |
+        Home Assistant:
+        XPON ONU Stick:
+        Installation method (HACS or manual):
+    validations:
+      required: true
+  - type: textarea
+    id: current-behavior
+    attributes:
+      label: What happens when you try the integration?
+      description: Include any setup error or missing readings. Leave blank if you have not tried it.
+  - type: upload
+    id: device-pages
+    attributes:
+      label: Device HTML files
+      description: Upload a ZIP with device-status.html and pon-status.html. Where used, add login.html, login-result.html, logout.html, and logout-result.html. See the guide for empty responses. Remove secrets first.
+    validations:
+      required: true
+      accept: ".zip"
+  - type: textarea
+    id: page-notes
+    attributes:
+      label: Page paths and missing files
+      description: List the actual frame paths if different from the guide. Explain unavailable pages, redirects, or empty login/logout responses. Use paths only, without credentials or tokens.
+      placeholder: |
+        Device Status path:
+        PON Status path:
+        Login/logout response status and redirect path, if any:
+        Unavailable files and reason:
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Optional. Copy the integration error from Settings → System → Logs, removing credentials and personal identifiers.
+      render: text

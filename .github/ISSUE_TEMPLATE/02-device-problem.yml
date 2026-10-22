@@ -1,0 +1,75 @@
+name: Problem with a supported device
+description: Report failed login, incorrect readings, or another problem with a supported device.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem and how to reproduce it.
+        For login or parsing problems, attach the affected pages using the [device HTML guide](https://github.com/vineetchoudhary/ha-xpon-onu-stick/blob/master/docs/device-support.md).
+        Remove credentials and personal identifiers from logs and attachments.
+  - type: input
+    id: model
+    attributes:
+      label: Manufacturer and model
+      placeholder: ODI DFP-34X-2C2
+    validations:
+      required: true
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware version
+      description: Copy the full version from Device Status, or enter Unknown.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Versions and options
+      placeholder: |
+        Home Assistant:
+        XPON ONU Stick:
+        Installation method (HACS or manual):
+        PON mode (GPON, EPON, or unknown):
+        Refresh interval:
+        Log out after a successful poll (on or off):
+        Last working version, if any:
+        Browser (if the dashboard is affected):
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong?
+      description: Include the affected sensors, page, card, or exact error message.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1.
+        2.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Copy the integration error from Settings → System → Logs. Remove credentials and personal identifiers.
+      render: text
+  - type: upload
+    id: attachments
+    attributes:
+      label: Screenshots or device pages
+      description: For login or parsing problems, include a sanitized HTML ZIP from the guide. Screenshots and log files are also welcome.
+    validations:
+      required: false
+      accept: ".zip,.png,.jpg,.jpeg,.gif,.log,.txt"

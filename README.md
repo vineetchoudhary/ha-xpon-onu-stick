@@ -47,6 +47,7 @@ Edit a dashboard, select **Add card**, and search for **XPON ONU Stick**. Home A
 - [Sensors and status limits](docs/sensors.md): Readings, thresholds, GPON registration states, and raw EPON LLID codes.
 - [Dashboard card](docs/dashboard.md): Card options and built-in dashboard examples.
 - [Device compatibility](docs/compatibility.md): Tested devices, firmware, and compatibility checks.
+- [Device support requests](docs/device-support.md): Save frame HTML and report a new device or a problem.
 - [Connection and read-only behavior](docs/behavior.md): Polling, authentication, device identity, and error handling.
 - [Firmware value handling](docs/firmware-values.md): Supported formats, parsing failures, and verification sources.
 - [Screenshots](docs/screenshots.md): Dashboard, sensors, options, and ONU status pages.

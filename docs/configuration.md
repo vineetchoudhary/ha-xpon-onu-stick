@@ -62,3 +62,5 @@ Some firmware shares the login with browsers on the same IP, so enable this only
 - **Card missing:** reload the browser page after updating the integration.
 
 Use the [live check](development.md#test-the-real-stick) to read the stick directly.
+
+Still having trouble? Open a **Problem with a supported device** issue. For login or parsing errors, attach the [relevant frame HTML](device-support.md).

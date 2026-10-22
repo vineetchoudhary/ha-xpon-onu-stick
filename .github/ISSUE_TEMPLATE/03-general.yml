@@ -1,0 +1,29 @@
+name: General issue or question
+description: Ask a question, suggest an improvement, or report another issue.
+title: "[General] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for questions, feature requests, or issues outside device support.
+        Remove credentials and personal identifiers from anything you share.
+  - type: textarea
+    id: description
+    attributes:
+      label: What would you like to report or ask?
+      description: Explain the problem, question, or proposed improvement.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Relevant context
+      description: Include device, firmware, Home Assistant, integration, HACS, or browser versions where relevant.
+  - type: upload
+    id: attachments
+    attributes:
+      label: Screenshots or supporting files
+      description: Optional. Review files for secrets before uploading.
+    validations:
+      required: false
+      accept: ".zip,.png,.jpg,.jpeg,.gif,.log,.txt"
