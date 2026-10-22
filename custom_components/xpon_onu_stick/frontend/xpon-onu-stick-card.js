@@ -125,12 +125,13 @@
       const previous = this._hass;
       this._hass = hass;
       if (!this._config) return;
-      if (!previous || previous.entities !== hass.entities || !this._entities) {
+      const entitiesChanged = !previous || previous.entities !== hass.entities || !this._entities;
+      if (entitiesChanged) {
         this._entities = null;
       }
       const entities = this._resolveEntities();
       const changed =
-        !previous ||
+        entitiesChanged ||
         previous.locale !== hass.locale ||
         Object.values(entities).some((entityId) => hass.states[entityId] !== this._states[entityId]);
       if (changed) this._render();

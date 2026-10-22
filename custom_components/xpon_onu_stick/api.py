@@ -8,6 +8,7 @@ import math
 import re
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
+from weakref import WeakValueDictionary
 
 import aiohttp
 from yarl import URL
@@ -24,6 +25,11 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+_DEVICE_LOCKS: WeakValueDictionary[tuple[asyncio.AbstractEventLoop, str], asyncio.Lock] = (
+    WeakValueDictionary()
+)
+_MAX_RESPONSE_BYTES = 256 * 1024
+_MAX_LLID_INTEGER_DIGITS = 64
 
 
 class OnuError(Exception):
@@ -36,6 +42,10 @@ class OnuConnectionError(OnuError):
 
 class OnuAuthError(OnuError):
     """The status interface requires authentication."""
+
+
+class OnuSessionBusy(OnuError):
+    """The firmware refused login because another management session is active."""
 
 
 class _OnuLoginRequired(OnuAuthError):
@@ -180,6 +190,17 @@ _NUMBER_UNITS = {
 _UNKNOWN_VALUES = {"", "-", "--", "n/a", "na", "unknown", "not available"}
 
 
+def _parse_llid_integer(raw: str, label: str) -> int:
+    """Bound numeric firmware text independently of Python's conversion limit."""
+    try:
+        if len(raw) > _MAX_LLID_INTEGER_DIGITS or not re.fullmatch(r"[0-9]+", raw):
+            raise ValueError("Expected a bounded nonnegative integer")
+        return int(raw)
+    except ValueError as err:
+        preview = raw if len(raw) <= 80 else raw[:80] + "..."
+        raise OnuParseError(f"Invalid EPON LLID {label}: {preview!r}") from err
+
+
 def _parse_value(raw: str, label: str, key: str) -> str | float | int | None:
     """Validate one reading without substituting a fabricated number."""
     if raw.casefold() in _UNKNOWN_VALUES:
@@ -275,12 +296,9 @@ def parse_pon_status_page(
     if len(table) < 3 or [cell.casefold() for cell in table[1]] != ["index", "status"]:
         raise OnuParseError("Invalid EPON LLID table")
     for row in table[2:]:
-        if len(row) != 2 or not re.fullmatch(r"[0-9]+", row[0]):
+        if len(row) != 2:
             raise OnuParseError("Invalid EPON LLID index")
-        try:
-            index = int(row[0])
-        except ValueError as err:
-            raise OnuParseError("Invalid EPON LLID index") from err
+        index = _parse_llid_integer(row[0], "index")
         key = f"epon_llid_{index}_status"
         if key in values:
             raise OnuParseError("Duplicate EPON LLID index")
@@ -289,14 +307,12 @@ def parse_pon_status_page(
             values[key] = None
         else:
             try:
-                if not re.fullmatch(r"[0-9]+", raw):
-                    raise ValueError("Expected a nonnegative integer")
                 # Preserve firmware codes; they are not GPON O1–O7 states.
-                values[key] = int(raw)
-            except ValueError:
+                values[key] = _parse_llid_integer(raw, f"status for index {index}")
+            except OnuParseError as err:
                 values[key] = None
                 if field_errors is not None:
-                    field_errors[key] = f"Invalid EPON LLID status for index {index}: {raw!r}"
+                    field_errors[key] = str(err)
     return "epon", values
 
 
@@ -323,8 +339,9 @@ class OnuStatus:
 class _LoginFormParser(HTMLParser):
     """Extract only the verified login form, ignoring language/settings forms."""
 
-    def __init__(self) -> None:
+    def __init__(self, host: str) -> None:
         super().__init__(convert_charrefs=True)
+        self._origin = URL(host)
         self.hidden: dict[str, str] = {}
         self.fields: set[str] = set()
         self.valid = False
@@ -333,10 +350,19 @@ class _LoginFormParser(HTMLParser):
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attributes = dict(attrs)
         if tag == "form":
-            self._in_login_form = (
-                attributes.get("action") == LOGIN_FORM_PATH
-                and (attributes.get("method") or "get").lower() == "post"
-            )
+            try:
+                target = self._origin.join(URL(attributes.get("action") or ""))
+                self._in_login_form = (
+                    target.origin() == self._origin
+                    and target.path == LOGIN_FORM_PATH
+                    and target.user is None
+                    and target.password is None
+                    and not target.query_string
+                    and not target.fragment
+                    and (attributes.get("method") or "get").lower() == "post"
+                )
+            except ValueError:
+                self._in_login_form = False
         elif tag == "input" and self._in_login_form and (name := attributes.get("name")):
             self.fields.add(name)
             if (attributes.get("type") or "text").lower() == "hidden":
@@ -348,12 +374,12 @@ class _LoginFormParser(HTMLParser):
             self._in_login_form = False
 
 
-class _LogoutResultParser(HTMLParser):
-    """Recognize the visible success heading captured from the logout response."""
+class _FormResultParser(HTMLParser):
+    """Read visible form results without trusting comments or scripts."""
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
-        self.success = False
+        self.messages: list[str] = []
         self._heading: list[str] | None = None
         self._ignored = 0
 
@@ -372,8 +398,16 @@ class _LogoutResultParser(HTMLParser):
             self._ignored = max(0, self._ignored - 1)
         if not self._ignored and tag == "h4" and self._heading is not None:
             message = " ".join("".join(self._heading).split()).casefold()
-            self.success |= message == "ok: logout successfully!"
+            self.messages.append(message)
             self._heading = None
+
+    @property
+    def logout_success(self) -> bool:
+        return "ok: logout successfully!" in self.messages
+
+    @property
+    def session_busy(self) -> bool:
+        return "error: you have logined! please logout at first and then login!" in self.messages
 
 
 class OnuClient:
@@ -393,7 +427,10 @@ class OnuClient:
         self._username = username
         self._password = password
         self._logout_after_poll = logout_after_poll
-        self._lock = asyncio.Lock()
+        lock_key = (asyncio.get_running_loop(), self.host)
+        self._lock = _DEVICE_LOCKS.setdefault(lock_key, asyncio.Lock())
+        self._owns_session = False
+        self._session_busy = False
         self._field_errors: dict[str, str] = {}
         # Home Assistant's shared HTTP session must not own this device's login
         # state. Keep cookies per client, accepting the ONU's numeric IP address.
@@ -405,6 +442,10 @@ class OnuClient:
         except ValueError as err:
             raise OnuAuthError("Invalid HTTP Basic credentials") from err
 
+    def matches_credentials(self, username: str, password: str) -> bool:
+        """Allow Home Assistant to reuse this client's login without exposing it."""
+        return self._username == username and self._password == password
+
     def _redirect_path(self, location: str) -> str | None:
         try:
             target = URL(self.host).join(URL(location))
@@ -415,6 +456,14 @@ class OnuClient:
         return None
 
     async def _request(self, method: str, path: str, data: dict[str, str] | None = None) -> str:
+        if (method, path) not in {
+            ("GET", DEVICE_STATUS_PATH),
+            ("GET", PON_STATUS_PATH),
+            ("GET", LOGIN_PAGE_PATH),
+            ("POST", LOGIN_FORM_PATH),
+            ("POST", LOGOUT_FORM_PATH),
+        }:
+            raise OnuConnectionError("Unsupported ONU request")
         url = URL(f"{self.host}{path}")
         headers = dict(self._headers)
         kwargs = {}
@@ -449,7 +498,15 @@ class OnuClient:
                     }:
                         raise OnuAuthError("The device returned an unsupported redirect")
                 response.raise_for_status()
-                return await response.text(errors="replace")
+                body = bytearray()
+                async for chunk in response.content.iter_chunked(16 * 1024):
+                    body.extend(chunk)
+                    if len(body) > _MAX_RESPONSE_BYTES:
+                        raise OnuParseError("The ONU response exceeds the supported page size")
+                try:
+                    return body.decode(response.charset or "utf-8", errors="replace")
+                except LookupError:
+                    return body.decode("utf-8", errors="replace")
         except aiohttp.ClientResponseError as err:
             # This firmware returns headerless HTML for an expired session on
             # /status.asp and /status_pon.asp. aiohttp rejects it before providing
@@ -466,9 +523,11 @@ class OnuClient:
 
     async def _async_login(self) -> None:
         """Reproduce the observed form POST, then let status reads verify success."""
+        self._owns_session = False
+        self._session_busy = False
         if not self._username:
             raise OnuAuthError("Enter the ONU username and password to sign in")
-        parser = _LoginFormParser()
+        parser = _LoginFormParser(self.host)
         parser.feed(await self._request("GET", LOGIN_PAGE_PATH))
         parser.close()
         if not parser.valid or parser.hidden.get("challenge"):
@@ -481,7 +540,11 @@ class OnuClient:
             "save": "Login",
             "submit-url": LOGIN_PAGE_PATH,
         }
-        await self._request("POST", LOGIN_FORM_PATH, payload)
+        result = _FormResultParser()
+        result.feed(await self._request("POST", LOGIN_FORM_PATH, payload))
+        result.close()
+        self._session_busy = result.session_busy
+        self._owns_session = not any(message.startswith("error:") for message in result.messages)
 
     async def _async_logout(self) -> None:
         """Reproduce the captured logout POST and require the device's acknowledgement."""
@@ -492,12 +555,13 @@ class OnuClient:
         except OnuError as err:
             # Logout failure must not trigger a credentials prompt or a new login.
             raise OnuLogoutError("Unable to confirm ONU logout") from err
-        parser = _LogoutResultParser()
+        parser = _FormResultParser()
         parser.feed(html)
         parser.close()
-        if not parser.success:
+        if not parser.logout_success:
             raise OnuLogoutError("The device did not confirm successful logout")
         self._cookie_jar.clear()
+        self._owns_session = False
 
     async def _async_read_status(self) -> OnuStatus:
         """Use sequential requests to keep the embedded server's load low."""
@@ -534,20 +598,34 @@ class OnuClient:
             field_errors=field_errors,
         )
 
-    async def async_get_status(self) -> OnuStatus:
-        """Read a snapshot, then optionally log out before releasing the poll lock."""
+    async def async_get_status(self, *, logout_after_poll: bool | None = None) -> OnuStatus:
+        """Serialize access to this address and only log out a login we established."""
+        logout = self._logout_after_poll if logout_after_poll is None else logout_after_poll
         async with self._lock:
             try:
                 status = await self._async_read_status()
             except _OnuLoginRequired:
+                self._owns_session = False
                 await self._async_login()
                 try:
                     status = await self._async_read_status()
                 except _OnuLoginRequired as err:
+                    self._owns_session = False
+                    if self._session_busy:
+                        raise OnuSessionBusy(
+                            "The ONU already has an active management session. "
+                            "Sign out of that session before trying again"
+                        ) from err
                     raise OnuAuthError(
                         "Login was rejected. Check the username and password"
                     ) from err
-            if self._logout_after_poll:
+                except OnuAuthError:
+                    self._owns_session = False
+                    raise
+            except OnuAuthError:
+                self._owns_session = False
+                raise
+            if logout and self._owns_session:
                 try:
                     await self._async_logout()
                 except OnuLogoutError:

@@ -1,5 +1,7 @@
 """Expose every Device Status and PON Status field as a sensor."""
 
+import logging
+
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -17,11 +19,12 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.entity_registry import async_entries_for_config_entry, async_get
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import OnuConfigEntry
 from .api import GPON_FIELDS
-from .const import DOMAIN
+from .const import DOMAIN, MAX_EPON_LLID_SENSORS
 from .coordinator import OnuCoordinator
 from .health import (
     MEASUREMENT_STATES,
@@ -32,6 +35,7 @@ from .health import (
 )
 
 PARALLEL_UPDATES = 0
+_LOGGER = logging.getLogger(__name__)
 GPON_SENSOR_KEYS = {*GPON_FIELDS.values(), "onu_registration_status"}
 SENSORS = (
     SensorEntityDescription(
@@ -160,9 +164,17 @@ async def async_setup_entry(
     """Add sensors for the detected mode, including newly reported LLID indices."""
     coordinator = entry.runtime_data
     added: set[str] = set()
+    prefix = f"{entry.unique_id}_"
+    known_llids = {
+        entity.unique_id.removeprefix(prefix)
+        for entity in async_entries_for_config_entry(async_get(hass), entry.entry_id)
+        if entity.unique_id.startswith(f"{prefix}epon_llid_")
+    }
+    limit_reported = False
 
     @callback
     def async_discover_sensors() -> None:
+        nonlocal limit_reported
         if not coordinator.last_update_success:
             return
         descriptions = [(OnuSensor, description) for description in SENSORS]
@@ -188,6 +200,20 @@ async def async_setup_entry(
         entities = []
         for sensor_class, description in descriptions:
             if description.key not in added:
+                if description.key.startswith("epon_llid_"):
+                    if (
+                        description.key not in known_llids
+                        and len(known_llids) >= MAX_EPON_LLID_SENSORS
+                    ):
+                        if not limit_reported:
+                            _LOGGER.warning(
+                                "Ignoring new LLID indices for %s after %s diagnostic sensors",
+                                coordinator.client.host,
+                                MAX_EPON_LLID_SENSORS,
+                            )
+                            limit_reported = True
+                        continue
+                    known_llids.add(description.key)
                 entities.append(sensor_class(coordinator, description))
                 added.add(description.key)
         if entities:

@@ -34,7 +34,8 @@
       "invalid_auth": "The ONU rejected authentication or returned an unsupported login page. Check the username and password used on the device's login page.",
       "invalid_host": "Enter a hostname, IP address, or HTTP(S) base URL without a path, query, or embedded credentials.",
       "unsupported_device": "The pages do not contain the expected Device Status and PON Status fields, or a value is invalid.",
-      "username_required": "A username is required when a password is provided."
+      "username_required": "A username is required when a password is provided.",
+      "session_busy": "The ONU already has an active management session. Sign out of the other session and try again."
     },
     "abort": {
       "already_configured": "This ONU stick is already configured.",
@@ -50,12 +51,12 @@
         "menu_options": {
           "polling": "Refresh interval",
           "status_limits": "Status limits",
-          "session": "Session Settings"
+          "session": "Session settings"
         }
       },
       "session": {
-        "title": "Session Settings",
-        "description": "Logout after polling is disabled by default. Enabling it may also end another client's web session on devices that share sessions.",
+        "title": "Session settings",
+        "description": "Disabled by default. When enabled, close a login opened by this integration after reading status. Existing sessions are left open.",
         "data": {
           "logout_after_poll": "Log out after a successful poll"
         }

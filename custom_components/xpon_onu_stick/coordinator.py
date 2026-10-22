@@ -10,7 +10,12 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import OnuAuthError, OnuClient, OnuError, OnuStatus
-from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
+from .const import (
+    CONF_LOGOUT_AFTER_POLL,
+    DEFAULT_LOGOUT_AFTER_POLL,
+    DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,7 +39,11 @@ class OnuCoordinator(DataUpdateCoordinator[OnuStatus]):
 
     async def _async_update_data(self) -> OnuStatus:
         try:
-            status = await self.client.async_get_status()
+            status = await self.client.async_get_status(
+                logout_after_poll=self.entry.options.get(
+                    CONF_LOGOUT_AFTER_POLL, DEFAULT_LOGOUT_AFTER_POLL
+                )
+            )
             if self.entry.unique_id != status.mac_address:
                 raise UpdateFailed("The address now belongs to a different ONU stick")
             return status

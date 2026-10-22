@@ -13,7 +13,6 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_SCAN_INTERVAL, CONF_USERNAME
 from homeassistant.core import callback
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
     BooleanSelector,
     NumberSelector,
@@ -24,7 +23,8 @@ from homeassistant.helpers.selector import (
     TextSelectorType,
 )
 
-from .api import OnuAuthError, OnuClient, OnuConnectionError, OnuParseError, normalize_host
+from .api import OnuAuthError, OnuConnectionError, OnuParseError, OnuSessionBusy, normalize_host
+from .client import async_forget_onu_client, async_get_onu_client, async_remember_onu_client
 from .const import (
     CONF_LOGOUT_AFTER_POLL,
     DEFAULT_LOGOUT_AFTER_POLL,
@@ -99,23 +99,22 @@ class OnuConfigFlow(ConfigFlow, domain=DOMAIN):
                 if data[CONF_PASSWORD] and not data[CONF_USERNAME]:
                     errors[CONF_USERNAME] = "username_required"
                 else:
-                    client = OnuClient(
-                        async_get_clientsession(self.hass),
+                    client = async_get_onu_client(
+                        self.hass,
                         data[CONF_HOST],
                         data[CONF_USERNAME],
                         data[CONF_PASSWORD],
-                        logout_after_poll=(
-                            entry.options.get(CONF_LOGOUT_AFTER_POLL, DEFAULT_LOGOUT_AFTER_POLL)
-                            if entry
-                            else DEFAULT_LOGOUT_AFTER_POLL
-                        ),
                     )
-                    status = await client.async_get_status()
+                    status = await client.async_get_status(logout_after_poll=False)
                     await self.async_set_unique_id(status.mac_address)
                     if entry:
                         self._abort_if_unique_id_mismatch()
+                        async_remember_onu_client(self.hass, client)
+                        if normalize_host(entry.data[CONF_HOST]) != data[CONF_HOST]:
+                            async_forget_onu_client(self.hass, entry.data[CONF_HOST])
                         return self.async_update_reload_and_abort(entry, data=data)
                     self._abort_if_unique_id_configured()
+                    async_remember_onu_client(self.hass, client)
                     return self.async_create_entry(
                         title=status.name,
                         data=data,
@@ -124,6 +123,8 @@ class OnuConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors[CONF_HOST] = "invalid_host"
             except OnuAuthError:
                 errors["base"] = "invalid_auth"
+            except OnuSessionBusy:
+                errors["base"] = "session_busy"
             except OnuConnectionError:
                 errors["base"] = "cannot_connect"
             except OnuParseError:

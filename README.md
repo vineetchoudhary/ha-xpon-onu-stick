@@ -6,7 +6,7 @@
 
 Monitor your XPON/GPON/EPON ONU SFP stick in Home Assistant through its local web interface. The integration reads status without changing the stick's settings.
 
-Tested with the **ODI DFP-34X-2C2** on firmware **V1.0-220923**. Requires Home Assistant **2026.9.0 or newer**.
+Tested with the **ODI DFP-34X-2C2** on firmware **V1.0-220923**. EPON parsing is covered by saved pages from a reported BDCOM ONU on **V2.11.00P3T1**, with live validation pending. See [device compatibility](docs/compatibility.md). Requires Home Assistant **2026.9.0 or newer**.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dashboard-card-dark.png">
@@ -22,7 +22,7 @@ Tested with the **ODI DFP-34X-2C2** on firmware **V1.0-220923**. Requires Home A
 - Adjust refresh intervals and status limits.
 - Use the included dashboard card with a 24-hour Rx power trend.
 - Keep valid readings available when another field cannot be parsed.
-- Optionally log out after successful polls through **Session Settings** (disabled by default); logout failures do not interrupt sensor updates.
+- Optionally close the integration's own login after polling through **Session settings**. Disabled by default. Logout failures do not interrupt sensor updates.
 
 ## Quick Start
 
@@ -46,7 +46,7 @@ Edit a dashboard, select **Add card**, and search for **XPON ONU Stick**. Home A
 
 - [Installation](docs/installation.md): HACS and manual setup.
 - [Configuration and troubleshooting](docs/configuration.md): Add the device, change options, and resolve common issues.
-- [Sensors and status limits](docs/sensors.md): Readings, thresholds, and GPON registration states.
+- [Sensors and status limits](docs/sensors.md): Readings, thresholds, GPON registration states, and raw EPON LLID codes.
 - [Dashboard card](docs/dashboard.md): Card options and built-in dashboard examples.
 - [Device compatibility](docs/compatibility.md): Tested devices, firmware, and compatibility checks.
 - [Connection and read-only behavior](docs/behavior.md): Polling, authentication, device identity, and error handling.
