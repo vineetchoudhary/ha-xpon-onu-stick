@@ -22,6 +22,8 @@ from custom_components.xpon_onu_stick.api import (
     parse_status_page,
 )
 from custom_components.xpon_onu_stick.const import CONF_LOGOUT_AFTER_POLL, DOMAIN
+from custom_components.xpon_onu_stick.devices.boa import profiles
+from custom_components.xpon_onu_stick.devices.boa.profiles import BoaProfile
 
 
 def sensor_for_key(hass, entry, key):
@@ -896,3 +898,44 @@ async def test_startup_connection_failure_is_retryable(hass, onu_server, device_
         entry = await add_device(hass, host)
     assert entry.state is ConfigEntryState.SETUP_RETRY
     assert not hass.states.async_all("sensor")
+
+
+async def test_profile_capabilities_preserve_ids_and_distinguish_invalid_readings(
+    hass, onu_server, monkeypatch
+):
+    host, state, _ = onu_server
+    without_rx = BoaProfile("test-no-rx", unsupported_fields=frozenset({"rx_power"}))
+    monkeypatch.setattr(profiles, "PROFILES", (without_rx,))
+    entry = await add_device(hass, host)
+    assert sensor_for_key(hass, entry, "rx_power") is None
+    assert sensor_for_key(hass, entry, "rx_power_status") is None
+    initial = {
+        entity.unique_id: entity.entity_id
+        for entity in er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)
+    }
+
+    monkeypatch.setattr(profiles, "PROFILES", ())
+    await entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+    rx = sensor_for_key(hass, entry, "rx_power")
+    rx_status = sensor_for_key(hass, entry, "rx_power_status")
+    assert rx.state == "-26.382721"
+    for unique_id, entity_id in initial.items():
+        assert er.async_get(hass).async_get_entity_id("sensor", DOMAIN, unique_id) == entity_id
+
+    monkeypatch.setattr(profiles, "PROFILES", (without_rx,))
+    await entry.runtime_data.async_refresh()
+    assert sensor_for_key(hass, entry, "rx_power").state == "unavailable"
+    assert sensor_for_key(hass, entry, "rx_power_status").state == "unavailable"
+
+    monkeypatch.setattr(profiles, "PROFILES", ())
+    state["pon"] = state["pon"].replace("-26.382721  dBm", "invalid dBm")
+    await entry.runtime_data.async_refresh()
+    invalid_rx = sensor_for_key(hass, entry, "rx_power")
+    assert invalid_rx.entity_id == rx.entity_id
+    assert invalid_rx.state == "unknown"
+    assert "parse_error" in invalid_rx.attributes
+    invalid_status = sensor_for_key(hass, entry, "rx_power_status")
+    assert invalid_status.entity_id == rx_status.entity_id
+    assert invalid_status.state == "unknown"
+    assert sensor_for_key(hass, entry, "temperature").state != "unavailable"

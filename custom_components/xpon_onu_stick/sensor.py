@@ -23,7 +23,6 @@ from homeassistant.helpers.entity_registry import async_entries_for_config_entry
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import OnuConfigEntry
-from .api import GPON_FIELDS
 from .const import DOMAIN, MAX_EPON_LLID_SENSORS
 from .coordinator import OnuCoordinator
 from .health import (
@@ -33,10 +32,11 @@ from .health import (
     measurement_status,
     registration_status,
 )
+from .models import GPON_READING_KEYS
 
 PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
-GPON_SENSOR_KEYS = {*GPON_FIELDS.values(), "onu_registration_status"}
+GPON_SENSOR_KEYS = {*GPON_READING_KEYS, "onu_registration_status"}
 SENSORS = (
     SensorEntityDescription(
         key="device_name",
@@ -156,12 +156,21 @@ STATUS_SENSORS = tuple(
 )
 
 
+def _reading_key(key: str) -> str:
+    """Map friendly statuses to their reading without changing raw LLID keys."""
+    if key == "onu_registration_status":
+        return "onu_state"
+    if key in {description.key for description in STATUS_SENSORS}:
+        return key.removesuffix("_status")
+    return key
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: OnuConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Add sensors for the detected mode, including newly reported LLID indices."""
+    """Add supported sensors for the detected mode, including new LLID indices."""
     coordinator = entry.runtime_data
     added: set[str] = set()
     prefix = f"{entry.unique_id}_"
@@ -199,6 +208,8 @@ async def async_setup_entry(
             ]
         entities = []
         for sensor_class, description in descriptions:
+            if not coordinator.data.supports(_reading_key(description.key)):
+                continue
             if description.key not in added:
                 if description.key.startswith("epon_llid_"):
                     if (
@@ -235,15 +246,17 @@ class OnuSensor(CoordinatorEntity[OnuCoordinator], SensorEntity):
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, coordinator.entry.unique_id)},
             connections={(CONNECTION_NETWORK_MAC, coordinator.data.mac_address)},
-            name=coordinator.data.values["device_name"] or coordinator.entry.title,
-            model=coordinator.data.values["device_name"],
-            sw_version=coordinator.data.values["firmware_version"],
+            name=coordinator.data.values.get("device_name") or coordinator.entry.title,
+            model=coordinator.data.values.get("device_name"),
+            sw_version=coordinator.data.values.get("firmware_version"),
             configuration_url=coordinator.client.host,
         )
 
     @property
     def available(self) -> bool:
         key = self.entity_description.key
+        if not self.coordinator.data.supports(_reading_key(key)):
+            return False
         if key in GPON_SENSOR_KEYS and self.coordinator.data.pon_mode != "gpon":
             return False
         if key.startswith("epon_llid_") and key not in self.coordinator.data.values:

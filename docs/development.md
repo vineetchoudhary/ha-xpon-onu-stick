@@ -22,6 +22,10 @@ HTML fixtures are grouped by device and firmware, with `default` for unknown fir
 
 Regression tests cover malformed readings, mode changes, cookie isolation, foreign login actions, response and entity limits, and safe dashboard rendering.
 
+## Device code and firmware differences
+
+See [device adapters and firmware profiles](device-adapters.md) for the code layout and how to add support. Shared transport and polling serve interface adapters, with small profiles for captured firmware differences. Home Assistant entities consume the same status model across devices.
+
 ## Test the real stick
 
 Replace `http://onu.example` with your ONU address:

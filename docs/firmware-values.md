@@ -22,6 +22,8 @@ Empty values, `-`, `--`, `N/A`, `NA`, `unknown`, and `not available` show as unk
 
 Missing fields, wrong units, corrupt text, infinity, NaN, and numeric overflow show as unknown with a `parse_error` attribute and a system log entry. Only the affected reading and its related status are changed. Other readings keep updating.
 
+A field that a verified [firmware profile](device-adapters.md#firmware-profiles) marks optional may be absent without an error. A present invalid value still reports an error. Unsupported fields are recorded separately from failed readings, and their existing entities become unavailable.
+
 An invalid EPON LLID status affects only that index. Invalid or duplicate indices, missing LLID tables, and ambiguous modes reject the whole PON page because its structure cannot identify readings reliably. Missing or invalid MAC identity also rejects the snapshot.
 
 For example, Tx power `-inf dBm` shows as **Unknown** in Home Assistant and a dash in the dashboard card. It is not converted to zero.

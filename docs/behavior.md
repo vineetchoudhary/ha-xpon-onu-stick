@@ -48,3 +48,5 @@ The display name comes from firmware and may differ from the physical model. If 
 - The sensor includes a `parse_error` attribute. Details appear in **Settings → System → Logs**.
 - Readings recover automatically, without repeated logs for unchanged errors.
 - Connection, authentication, page, or MAC identity failures make all sensors unavailable.
+
+Field expectations can vary by a verified firmware profile. A known optional row may be absent without a parsing error. Missing or unknown firmware uses the generic interface profile, so it does not silently inherit another firmware's exceptions. See [device adapters and firmware profiles](device-adapters.md).

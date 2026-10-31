@@ -282,10 +282,14 @@ async def test_missing_epon_identity_fails(onu_server, epon_device_html, epon_po
 
 
 @pytest.mark.parametrize(
-    "label, key", [("Firmware Version", "firmware_version"), ("CPU Usage", "cpu_usage")]
+    "label, key, expected_errors",
+    [
+        ("Firmware Version", "firmware_version", {"firmware_version", "device_name"}),
+        ("CPU Usage", "cpu_usage", {"cpu_usage"}),
+    ],
 )
 async def test_missing_epon_device_field_is_isolated(
-    onu_server, epon_device_html, epon_pon_html, label, key
+    onu_server, epon_device_html, epon_pon_html, label, key, expected_errors
 ):
     host, state, _ = onu_server
     state.update(device=epon_device_html.replace(label, "Missing"), pon=epon_pon_html)
@@ -293,5 +297,7 @@ async def test_missing_epon_device_field_is_isolated(
         status = await OnuClient(session, host).async_get_status()
     assert status.values[key] is None
     assert status.values["rx_power"] == -18.1
-    assert set(status.field_errors) == {key}
+    # Without firmware evidence, the generic profile cannot assume Device Name
+    # was intentionally omitted. Other valid readings still keep updating.
+    assert set(status.field_errors) == expected_errors
     assert not state["logout_posts"]
