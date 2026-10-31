@@ -27,7 +27,7 @@ See the [light and dark previews](screenshots.md#dashboard-card).
 
 Open **Settings → Dashboards → ⋮ → Resources**. Check for this resource:
 
-- URL: `/xpon_onu_stick/xpon-onu-stick-card.js?v=0.6.1`
+- URL: `/xpon_onu_stick/xpon-onu-stick-card.js?v=0.6.5`
 - Type: **JavaScript module**
 
 Add it if missing, then reload the browser page. Enable **Advanced mode** in your profile if Resources is hidden.
