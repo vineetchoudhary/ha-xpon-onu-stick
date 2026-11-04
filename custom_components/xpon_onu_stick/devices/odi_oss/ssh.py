@@ -1,4 +1,4 @@
-"""Bounded, host-verified SSH transport for the ODI OSS status batch."""
+"""Bounded, host-verified SSH transport for ODI OSS."""
 
 import asyncio
 import logging
@@ -9,6 +9,7 @@ from contextlib import ExitStack
 from hmac import compare_digest
 from ipaddress import ip_address
 from pathlib import Path
+from time import time
 from weakref import WeakValueDictionary
 
 import asyncssh
@@ -30,6 +31,11 @@ _LOCKS: WeakValueDictionary[tuple[asyncio.AbstractEventLoop, str, int], asyncio.
 _MAX_KEY_BYTES = 16 * 1024
 _MAX_REPLY_BYTES = 256 * 1024
 _HOST_KEY_ALGORITHM = "ssh-ed25519"
+_READ_CLOCK = "/bin/busybox date -u +%s"
+_CLOCK_CHECK_INTERVAL = 300
+_CLOCK_TOLERANCE = 60
+_CLOCK_TIMEOUT = 5
+_MIN_HOME_EPOCH = 946684800  # 2000-01-01 UTC
 
 
 class OnuHostKeyError(OnuConnectionError):
@@ -121,6 +127,8 @@ class OdiSshClient:
         self._lock = _LOCKS.setdefault((asyncio.get_running_loop(), host, port), asyncio.Lock())
         self._parser = OdiStatusParser()
         self._field_errors: dict[str, str] = {}
+        self._next_clock_check = 0.0
+        self._clock_sync_failed = False
 
     async def _async_connect(self) -> asyncssh.SSHClientConnection:
         key = await asyncio.to_thread(_read_key, self._config_dir, self._key_filename)
@@ -144,8 +152,13 @@ class OdiSshClient:
         if self._connection is None or self._connection.is_closed():
             self._parser = OdiStatusParser()
             self._connection = await self._async_connect()
-        process = await self._connection.create_process(
-            STATUS_COMMAND, encoding=None, request_pty=False, stderr=asyncssh.STDOUT
+            if not self._clock_sync_failed:
+                self._next_clock_check = 0.0
+        return await self._async_run(self._connection, STATUS_COMMAND)
+
+    async def _async_run(self, connection: asyncssh.SSHClientConnection, command: str) -> str:
+        process = await connection.create_process(
+            command, encoding=None, request_pty=False, stderr=asyncssh.STDOUT
         )
         try:
             process.stdin.write_eof()
@@ -162,12 +175,39 @@ class OdiSshClient:
         finally:
             process.close()
 
+    async def _async_sync_clock(self, connection: asyncssh.SSHClientConnection) -> None:
+        now = asyncio.get_running_loop().time()
+        if now < self._next_clock_check:
+            return
+        self._next_clock_check = now + _CLOCK_CHECK_INTERVAL
+        try:
+            async with asyncio.timeout(_CLOCK_TIMEOUT):
+                current = (await self._async_run(connection, _READ_CLOCK)).strip()
+                host_epoch = int(time())
+                if not re.fullmatch(r"[0-9]{1,12}", current) or host_epoch < _MIN_HOME_EPOCH:
+                    raise ValueError("Invalid clock time")
+                if abs(int(current) - host_epoch) > _CLOCK_TOLERANCE:
+                    # BusyBox can report success even if the set failed. Read
+                    # the actual clock back and only interpolate HA's integer.
+                    command = f"/bin/busybox date -u -s @{host_epoch} >/dev/null && {_READ_CLOCK}"
+                    updated = (await self._async_run(connection, command)).strip()
+                    if not re.fullmatch(r"[0-9]{1,12}", updated) or (
+                        abs(int(updated) - host_epoch) > _CLOCK_TOLERANCE
+                    ):
+                        raise ValueError("Clock update could not be verified")
+        except asyncssh.Error, OSError, OnuConnectionError, ValueError:
+            if not self._clock_sync_failed:
+                _LOGGER.warning("Could not sync the ODI OSS clock at %s", self.host)
+            self._clock_sync_failed = True
+        else:
+            self._clock_sync_failed = False
+
     def _abort(self) -> None:
         if self._connection is not None:
             self._connection.abort()
             self._connection = None
 
-    async def async_get_status(self) -> OnuStatus:
+    async def async_get_status(self, *, sync_clock_for_mac: str | None = None) -> OnuStatus:
         async with self._lock:
             try:
                 async with asyncio.timeout(REQUEST_TIMEOUT):
@@ -193,6 +233,8 @@ class OdiSshClient:
                 raise
             report_field_errors(self._field_errors, status, _LOGGER, self.host)
             self._field_errors = status.field_errors.copy()
+            if status.mac_address == sync_clock_for_mac and self._connection is not None:
+                await self._async_sync_clock(self._connection)
             return status
 
     async def async_close(self) -> None:

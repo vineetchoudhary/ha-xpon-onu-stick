@@ -19,7 +19,7 @@
 2. Enroll only the public key (`odi-ha.pub`) on the stick in **Admin → SSH keys**. [ODI OSS access guide](https://github.com/AndreZiviani/odi-oss/blob/main/docs/ACCESS.md)
 3. Copy the private key (`odi-ha`) into `xpon_onu_stick/ssh/` inside the Home Assistant Core configuration directory (typically `/config`). Set permissions to `0600` and make the file readable by Core. Treat it as a root credential and keep it private, including in backups.
 4. Get the stick's Ed25519 host fingerprint from a trusted SSH connection or a previously verified `known_hosts` entry. For a verified default-port entry, use `ssh-keygen -l -F onu.example` on that machine. For a custom port, use the bracketed form, such as `ssh-keygen -l -F '[onu.example]:2222'`. Copy the `SHA256:…` value for the ED25519 host key.
-5. Enter the stick's hostname or IP, its SSH port (default **22**), the key filename (`odi-ha`), and the verified host fingerprint. Home Assistant polls over SSH after setup.
+5. Enter the stick's hostname or IP, its SSH port (default **22**), the key filename (`odi-ha`), and the verified host fingerprint. **Sync the stick clock with Home Assistant** is enabled by default.
 
 ## 2. Check the readings
 
@@ -27,7 +27,7 @@ Stock GPON has **22 entities**. Stock EPON has **18 common entities plus one per
 
 ## 3. Open the options
 
-Open **Settings → Devices & services → XPON ONU Stick** and select the settings gear. Choose **Refresh interval** or **Status limits**. Stock firmware also offers **Session settings**.
+Open **Settings → Devices & services → XPON ONU Stick** and select the settings gear. Choose **Refresh interval** or **Status limits**. Stock firmware also offers **Session settings**, and ODI OSS offers **Clock synchronization**.
 
 ## 4. Set the refresh interval
 
@@ -58,6 +58,10 @@ Select **Add card → XPON ONU Stick** in a dashboard. See [card options](dashbo
 **Log out after a successful poll** is disabled by default. Enable it to close the integration's own form-login session after reading both status pages. Connection validation never logs out.
 
 Some firmware shares the login with browsers on the same IP, so enable this only when needed. See [session behavior](behavior.md#stock-web-requests).
+
+## Clock synchronization
+
+ODI OSS may start at 1970 after a restart. Home Assistant uses its own system time to correct the stick's clock when the difference exceeds one minute. The option defaults to enabled for new and existing ODI OSS entries. You can turn it off under **Clock synchronization** if the stick gets its time from another source. See [clock behavior](behavior.md#clock-synchronization).
 
 ## Troubleshooting
 

@@ -1,7 +1,9 @@
 """ODI OSS capture, local SSH transport, and Home Assistant regressions."""
 
 import asyncio
+import re
 from pathlib import Path
+from time import time
 from unittest.mock import patch
 
 import asyncssh
@@ -16,6 +18,7 @@ from custom_components.xpon_onu_stick.const import (
     CONF_CONNECTION_TYPE,
     CONF_SSH_FINGERPRINT,
     CONF_SSH_KEY_FILE,
+    CONF_SYNC_CLOCK,
     CONNECTION_ODI_SSH,
     DOMAIN,
 )
@@ -26,6 +29,7 @@ from custom_components.xpon_onu_stick.models import OnuAuthError, OnuConnectionE
 _CAPTURE = Path(__file__).parent / "fixtures/devices/odi-dfp-34x-2c2/odi-oss-v1.15.0/ssh_status.txt"
 _MAC = "02:00:00:00:00:01"
 _OTHER_MAC = "02:00:00:00:00:02"
+_READ_CLOCK = "/bin/busybox date -u +%s"
 
 
 @pytest.fixture
@@ -155,6 +159,8 @@ async def odi_server(captured_status, tmp_path):
         "active_commands": 0,
         "max_concurrent": 0,
         "stall": False,
+        "clock": int(time()),
+        "set_clock": True,
     }
 
     class Server(asyncssh.SSHServer):
@@ -185,6 +191,20 @@ async def odi_server(captured_status, tmp_path):
                 await process.wait_closed()
                 return
             await asyncio.sleep(0.01)
+            if process.command == _READ_CLOCK:
+                process.stdout.write(f"{state['clock']}\n".encode())
+                process.exit(0)
+                return
+            clock_update = re.fullmatch(
+                r"/bin/busybox date -u -s @([0-9]+) >/dev/null && " + re.escape(_READ_CLOCK),
+                process.command,
+            )
+            if clock_update:
+                if state["set_clock"]:
+                    state["clock"] = int(clock_update[1])
+                process.stdout.write(f"{state['clock']}\n".encode())
+                process.exit(0)
+                return
             if process.command != STATUS_COMMAND:
                 process.exit(127)
                 return
@@ -331,17 +351,20 @@ def _entity(hass, key, platform="sensor"):
     return hass.states.get(entity_id) if entity_id else None
 
 
-async def _add_ssh(hass, data):
+async def _add_ssh(hass, data, *, sync_clock=None):
     form = await _choose(hass, "ssh")
     assert form["step_id"] == "ssh"
     assert form["type"] is FlowResultType.FORM
     payload = {key: value for key, value in data.items() if key != CONF_CONNECTION_TYPE}
+    if sync_clock is not None:
+        payload[CONF_SYNC_CLOCK] = sync_clock
     result = await hass.config_entries.flow.async_configure(form["flow_id"], payload)
     assert result["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
     entry = result["result"]
     assert entry.state is config_entries.ConfigEntryState.LOADED
     assert dict(entry.data) == data
+    assert entry.options[CONF_SYNC_CLOCK] is (True if sync_clock is None else sync_clock)
     return entry
 
 
@@ -359,7 +382,7 @@ async def test_ha_ssh_setup_poll_failure_recovery_and_reload(hass, odi_server, c
     assert _entity(hass, "optical_los", "binary_sensor").state == "off"
     assert _entity(hass, "cpu_usage").state == "unknown"
     options = await hass.config_entries.options.async_init(entry.entry_id)
-    assert options["menu_options"] == ["polling", "status_limits"]
+    assert options["menu_options"] == ["polling", "status_limits", "clock"]
     initial_connections = state["accepted"]
     state["reply"] = (
         captured_status.replace("Optical LOS, status: clear", "Optical LOS, status: occur")
@@ -388,6 +411,79 @@ async def test_ha_ssh_setup_poll_failure_recovery_and_reload(hass, odi_server, c
     assert await hass.config_entries.async_unload(entry.entry_id)
     await asyncio.wait_for(connection.wait_closed(), 1)
     assert not state["connections"]
+
+
+async def test_ha_ssh_clock_sync_on_setup_reconnect_and_option_change(
+    hass, odi_server, monkeypatch
+):
+    data, state, _ = odi_server
+    home_epoch = 1_800_000_000
+    monkeypatch.setattr(ssh, "time", lambda: home_epoch)
+    state["clock"] = 30
+    entry = await _add_ssh(hass, data)
+    set_command = f"/bin/busybox date -u -s @{home_epoch} >/dev/null && {_READ_CLOCK}"
+    assert state["commands"] == [STATUS_COMMAND, STATUS_COMMAND, _READ_CLOCK, set_command]
+    assert state["clock"] == home_epoch
+    await entry.runtime_data.async_refresh()
+    assert state["commands"][-1] == STATUS_COMMAND
+    connection = entry.runtime_data.client._connection
+    await _drop_connections(state)
+    await asyncio.wait_for(connection.wait_closed(), 1)
+    state["clock"] = 60
+    await entry.runtime_data.async_refresh()
+    assert state["commands"][-3:] == [STATUS_COMMAND, _READ_CLOCK, set_command]
+
+    hass.config_entries.async_update_entry(entry, options={**entry.options, CONF_SCAN_INTERVAL: 90})
+    state["clock"] = 0
+    options = await hass.config_entries.options.async_init(entry.entry_id)
+    options = await hass.config_entries.options.async_configure(
+        options["flow_id"], {"next_step_id": "clock"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        options["flow_id"], {CONF_SYNC_CLOCK: False}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    assert entry.options == {CONF_SCAN_INTERVAL: 90, CONF_SYNC_CLOCK: False}
+    assert state["clock"] == 0
+    assert state["commands"][-1] == STATUS_COMMAND
+
+
+async def test_ha_ssh_can_disable_clock_sync_before_first_poll(hass, odi_server):
+    data, state, _ = odi_server
+    state["clock"] = 0
+    await _add_ssh(hass, data, sync_clock=False)
+    assert state["commands"] == [STATUS_COMMAND, STATUS_COMMAND]
+
+
+async def test_ssh_clock_sync_requires_matching_identity_and_preserves_readings_on_failure(
+    odi_server, monkeypatch, caplog
+):
+    data, state, key_path = odi_server
+    client = _client(data, key_path)
+    home_epoch = 1_800_000_000
+    monkeypatch.setattr(ssh, "time", lambda: home_epoch)
+    try:
+        assert (await client.async_get_status(sync_clock_for_mac=_OTHER_MAC)).mac_address == _MAC
+        assert state["commands"] == [STATUS_COMMAND]
+        state["clock"] = home_epoch - 30
+        await client.async_get_status(sync_clock_for_mac=_MAC)
+        assert state["commands"][-2:] == [STATUS_COMMAND, _READ_CLOCK]
+        state["clock"] = 1
+        state["set_clock"] = False
+        client._next_clock_check = 0
+        status = await client.async_get_status(sync_clock_for_mac=_MAC)
+        assert status.values["onu_state"] == "O5"
+        assert state["clock"] == 1
+        assert "Could not sync the ODI OSS clock" in caplog.text
+        await client.async_get_status(sync_clock_for_mac=_MAC)
+        assert state["commands"][-1] == STATUS_COMMAND
+        state["set_clock"] = True
+        client._next_clock_check = 0
+        await client.async_get_status(sync_clock_for_mac=_MAC)
+        assert state["clock"] == home_epoch
+    finally:
+        await client.async_close()
 
 
 async def test_ha_ssh_reauth_only_changes_key_file(hass, odi_server):

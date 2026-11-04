@@ -13,8 +13,10 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .api import OnuAuthError, OnuClient, OnuError, OnuStatus
 from .const import (
     CONF_LOGOUT_AFTER_POLL,
+    CONF_SYNC_CLOCK,
     DEFAULT_LOGOUT_AFTER_POLL,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_SYNC_CLOCK,
     DOMAIN,
 )
 from .devices.odi_oss.ssh import OdiSshClient
@@ -56,7 +58,11 @@ class OnuCoordinator(DataUpdateCoordinator[OnuStatus]):
     async def _async_update_data(self) -> OnuStatus:
         try:
             if isinstance(self.client, OdiSshClient):
-                status = await self.client.async_get_status()
+                status = await self.client.async_get_status(
+                    sync_clock_for_mac=self.entry.unique_id
+                    if self.entry.options.get(CONF_SYNC_CLOCK, DEFAULT_SYNC_CLOCK)
+                    else None
+                )
             else:
                 status = await self.client.async_get_status(
                     logout_after_poll=self.entry.options.get(

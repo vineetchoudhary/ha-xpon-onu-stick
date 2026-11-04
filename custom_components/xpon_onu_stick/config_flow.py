@@ -42,11 +42,13 @@ from .const import (
     CONF_LOGOUT_AFTER_POLL,
     CONF_SSH_FINGERPRINT,
     CONF_SSH_KEY_FILE,
+    CONF_SYNC_CLOCK,
     CONNECTION_BOA,
     CONNECTION_ODI_SSH,
     DEFAULT_LOGOUT_AFTER_POLL,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_SSH_PORT,
+    DEFAULT_SYNC_CLOCK,
     DOMAIN,
     MAX_SCAN_INTERVAL,
     MIN_SCAN_INTERVAL,
@@ -86,6 +88,9 @@ def _ssh_schema(defaults: dict[str, Any], *, reauth: bool) -> vol.Schema:
             ),
             **fields,
             vol.Required(CONF_SSH_FINGERPRINT, default=defaults.get(CONF_SSH_FINGERPRINT, "")): str,
+            vol.Required(
+                CONF_SYNC_CLOCK, default=defaults.get(CONF_SYNC_CLOCK, DEFAULT_SYNC_CLOCK)
+            ): BooleanSelector(),
         }
     return vol.Schema(fields)
 
@@ -145,6 +150,8 @@ class OnuConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None, *, entry: ConfigEntry | None, reauth: bool
     ) -> ConfigFlowResult:
         defaults = dict(entry.data) if entry else {}
+        options = dict(entry.options) if entry else {}
+        defaults[CONF_SYNC_CLOCK] = options.get(CONF_SYNC_CLOCK, DEFAULT_SYNC_CLOCK)
         old_is_ssh = defaults.get(CONF_CONNECTION_TYPE) == CONNECTION_ODI_SSH
         if entry and not old_is_ssh:
             defaults[CONF_HOST] = URL(defaults[CONF_HOST]).host
@@ -154,6 +161,7 @@ class OnuConfigFlow(ConfigFlow, domain=DOMAIN):
                 defaults[CONF_SSH_KEY_FILE] = user_input.get(CONF_SSH_KEY_FILE, "")
             else:
                 defaults.update(user_input)
+                options[CONF_SYNC_CLOCK] = defaults[CONF_SYNC_CLOCK]
             data = {
                 CONF_CONNECTION_TYPE: CONNECTION_ODI_SSH,
                 CONF_HOST: defaults.get(CONF_HOST, ""),
@@ -183,9 +191,9 @@ class OnuConfigFlow(ConfigFlow, domain=DOMAIN):
                         self._abort_if_unique_id_mismatch()
                         if not old_is_ssh:
                             async_forget_onu_client(self.hass, entry.data[CONF_HOST])
-                        return self.async_update_reload_and_abort(entry, data=data)
+                        return self.async_update_reload_and_abort(entry, data=data, options=options)
                     self._abort_if_unique_id_configured()
-                    return self.async_create_entry(title=status.name, data=data)
+                    return self.async_create_entry(title=status.name, data=data, options=options)
                 except OnuKeyFileError:
                     errors[CONF_SSH_KEY_FILE] = "invalid_ssh_key_file"
                 except OnuHostKeyError:
@@ -278,7 +286,26 @@ class OnuOptionsFlow(OptionsFlowWithReload):
         options = ["polling", "status_limits"]
         if self.config_entry.data.get(CONF_CONNECTION_TYPE, CONNECTION_BOA) == CONNECTION_BOA:
             options.append("session")
+        else:
+            options.append("clock")
         return self.async_show_menu(step_id="init", menu_options=options)
+
+    async def async_step_clock(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        if user_input is not None:
+            return self.async_create_entry(
+                title="", data={**self.config_entry.options, **user_input}
+            )
+        return self.async_show_form(
+            step_id="clock",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_SYNC_CLOCK,
+                        default=self.config_entry.options.get(CONF_SYNC_CLOCK, DEFAULT_SYNC_CLOCK),
+                    ): BooleanSelector(),
+                }
+            ),
+        )
 
     async def async_step_session(
         self, user_input: dict[str, Any] | None = None

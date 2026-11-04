@@ -1,4 +1,4 @@
-# Connection and read-only behavior
+# Connection behavior
 
 The integration reads the stock web interface or connects to ODI OSS over SSH, independently of the router or switch hosting the stick.
 
@@ -34,6 +34,10 @@ Responses are limited to 256 KiB. HTTPS verifies certificates. HTTP sends authen
 Home Assistant authenticates as `root` with the configured Ed25519 key after verifying the stick's pinned host fingerprint. A poll runs one fixed batch of read-only status commands and reuses the SSH connection while it is healthy. Validation and polling for the same SSH endpoint are serialized. A failed transport closes the connection so the next poll can reconnect.
 
 The batch reads the management MAC, firmware, system data, optical diagnostics and accumulated GPON driver counters. It filters the GPON status on the stick to omit the serial number and provisioning details. The poll has a 10-second deadline and a 256 KiB reply limit.
+
+### Clock synchronization
+
+With [clock synchronization](configuration.md#clock-synchronization) enabled, Home Assistant checks the ODI OSS clock after the first successful poll and roughly every five minutes on a successful poll. A new connection also triggers a check after the device restarts. If the clock differs by more than 60 seconds, the integration sets the stick's runtime clock to Home Assistant's Unix time and reads it back. The command runs on the same pinned SSH connection after the management MAC matches the entry. A clock error leaves the status readings available and is retried on a later poll.
 
 ## PON mode
 

@@ -40,7 +40,8 @@
           "host": "Device hostname or IP address",
           "port": "SSH port",
           "ssh_key_file": "Private key filename",
-          "ssh_fingerprint": "SSH host fingerprint (SHA256:…)"
+          "ssh_fingerprint": "SSH host fingerprint (SHA256:…)",
+          "sync_clock": "Sync the stick clock with Home Assistant"
         }
       },
       "ssh_reauth": {
@@ -81,7 +82,8 @@
         "menu_options": {
           "polling": "Refresh interval",
           "status_limits": "Status limits",
-          "session": "Session settings"
+          "session": "Session settings",
+          "clock": "Clock synchronization"
         }
       },
       "session": {
@@ -114,6 +116,13 @@
           "voltage_max": "Maximum voltage",
           "bias_current_min": "Minimum bias current (optional)",
           "bias_current_max": "Maximum bias current (optional)"
+        }
+      },
+      "clock": {
+        "title": "Clock synchronization",
+        "description": "Enabled by default. Home Assistant corrects the ODI OSS system clock when it differs by more than one minute.",
+        "data": {
+          "sync_clock": "Sync the stick clock with Home Assistant"
         }
       }
     },

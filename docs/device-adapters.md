@@ -16,7 +16,7 @@ All paths below are inside `custom_components/xpon_onu_stick/`:
 | [devices/boa/parsing.py](../custom_components/xpon_onu_stick/devices/boa/parsing.py) | Table parsing, numeric validation, PON mode detection, and raw LLID values. |
 | [devices/boa/auth.py](../custom_components/xpon_onu_stick/devices/boa/auth.py) | Supported form validation, login/logout payloads, and acknowledgement parsing. |
 | [devices/boa/profiles.py](../custom_components/xpon_onu_stick/devices/boa/profiles.py) | Proven field differences for captured firmware. |
-| [devices/odi_oss/](../custom_components/xpon_onu_stick/devices/odi_oss/) | Pinned SSH transport, a fixed read-only status batch and parsing for ODI OSS. |
+| [devices/odi_oss/](../custom_components/xpon_onu_stick/devices/odi_oss/) | Pinned SSH transport, a fixed status batch, and runtime clock synchronization for ODI OSS. |
 
 The coordinator, sensors, config flow, and dashboard consume the shared status model. They do not select parsing rules by manufacturer or firmware version. Adapter, model, and transport modules do not import Home Assistant APIs.
 
@@ -38,7 +38,7 @@ The shared client owns login retries, session ownership, and optional logout. An
 
 ### ODI OSS SSH interface
 
-The SSH client verifies a configured host fingerprint and only runs the fixed telemetry command from the ODI OSS adapter. It owns its connection and endpoint lock. The parser validates the build, GPON structure and management MAC, and reports per-field errors and supported diagnostics through the shared snapshot.
+The SSH client verifies a configured host fingerprint and owns its connection and endpoint lock. The parser validates the build, GPON structure and management MAC, and reports per-field errors and supported diagnostics through the shared snapshot. The fixed clock commands run separately from telemetry and require the matching entry MAC and an enabled option.
 
 ## Firmware profiles
 

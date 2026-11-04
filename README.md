@@ -4,7 +4,7 @@
 
 # XPON ONU Stick for Home Assistant
 
-Monitor your ONU SFP stick in Home Assistant through the stock web interface or directly over SSH with ODI OSS firmware. Polling is read-only.
+Monitor your ONU SFP stick in Home Assistant through the stock web interface or directly over SSH with ODI OSS firmware.
 
 Supports **GPON and EPON**. Requires Home Assistant **2026.9.0 or newer**. See [tested devices and firmware](docs/compatibility.md).
 
@@ -19,6 +19,7 @@ Supports **GPON and EPON**. Requires Home Assistant **2026.9.0 or newer**. See [
 - Monitor optical power, temperature, voltage, laser bias current, CPU, and memory.
 - Automatically detect GPON registration states or EPON LLID status codes.
 - Read ODI OSS optical alarms and GPON line-quality counters over SSH.
+- Sync the ODI OSS system clock with Home Assistant after the stick restarts or its clock drifts.
 - Adjust refresh intervals, status limits, and optional logout after polling.
 - Use the included dashboard card with a 24-hour Rx power trend.
 - Keep valid readings available when another field cannot be parsed.
@@ -49,7 +50,7 @@ Edit a dashboard, select **Add card**, and search for **XPON ONU Stick**. Home A
 - [Dashboard card](docs/dashboard.md): Card options and built-in dashboard examples.
 - [Device compatibility](docs/compatibility.md): Tested devices, firmware, and compatibility checks.
 - [Device support requests](docs/device-support.md): Save frame HTML and report a new device or a problem.
-- [Connection and read-only behavior](docs/behavior.md): Polling, authentication, device identity, and error handling.
+- [Connection behavior](docs/behavior.md): Polling, authentication, clock synchronization, device identity, and error handling.
 - [Firmware value handling](docs/firmware-values.md): Supported formats, parsing failures, and verification sources.
 - [Screenshots](docs/screenshots.md): Dashboard, sensors, options, and ONU status pages.
 - [Development](docs/development.md): Tests, live device checks, and dashboard previews.

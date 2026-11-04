@@ -4,14 +4,14 @@ These instructions apply throughout this repository. Follow the user's requested
 
 ## Project and code map
 
-XPON ONU Stick is a Home Assistant custom integration for monitoring ONU sticks through the stock GPON/EPON web interface or ODI OSS GPON SSH without changing device settings. Its domain is `xpon_onu_stick`.
+XPON ONU Stick is a Home Assistant custom integration for monitoring ONU sticks through the stock GPON/EPON web interface or ODI OSS GPON SSH. ODI OSS can also synchronize its runtime clock. The domain is `xpon_onu_stick`.
 
 Keep these architectural boundaries clear:
 
 | Area | Starting points |
 | --- | --- |
 | Shared device code | [Client workflow](custom_components/xpon_onu_stick/api.py), [HTTP transport](custom_components/xpon_onu_stick/transport.py), and [status/capability types](custom_components/xpon_onu_stick/models.py). |
-| Device differences | [Interface adapters](custom_components/xpon_onu_stick/devices/) own status/authentication formats. Boa uses stock pages and firmware profiles. ODI OSS uses a fixed read-only SSH batch. |
+| Device differences | [Interface adapters](custom_components/xpon_onu_stick/devices/) own status/authentication formats. Boa uses stock pages and firmware profiles. ODI OSS uses a fixed SSH status batch and supports runtime clock synchronization. |
 | Home Assistant integration | The [integration package](custom_components/xpon_onu_stick/) owns entry lifecycle, configuration, polling, entities, advisory statuses, and resource registration. |
 | Dashboard | The [bundled card](custom_components/xpon_onu_stick/frontend/) uses Home Assistant data. [Preview tools](tools/card/) use sample readings. |
 | Tests and developer tools | [Tests](tests/) cover captured firmware, simulator behavior, Home Assistant, and the browser. Follow the [development guide](docs/development.md) for commands. |
@@ -51,6 +51,7 @@ The request boundary declared in the [Boa adapter](custom_components/xpon_onu_st
 - Default checks use fixtures and localhost simulators. Run a physical-device check only when requested, using an explicitly supplied address. Never infer a management address or reuse credentials found elsewhere.
 - Use the existing private password prompt for live checks. Keep credentials, cookies, raw HAR files, and personal network details out of source files, command arguments, public logs, and agent configuration.
 - Keep ODI OSS SSH polling on the configured endpoint with a pinned Ed25519 host fingerprint and dedicated key file. Preserve the fixed read-only command, endpoint lock, reply/deadline bounds, and filtering of identifying GPON fields on the stick. Treat new commands as request policy changes that require captured evidence and regression coverage.
+- Limit ODI OSS clock synchronization to the runtime clock, after a successful status poll on the same SSH connection with the configured MAC and the option enabled. Only interpolate the Home Assistant Unix timestamp into the fixed clock command. Preserve valid readings when clock synchronization fails.
 
 ## Readings and Home Assistant identity
 
