@@ -8,6 +8,6 @@
   "integration_type": "device",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/vineetchoudhary/ha-xpon-onu-stick/issues",
-  "requirements": ["asyncssh==2.24.1"],
+  "requirements": ["asyncssh>=2.21.0"],
   "version": "0.7.0"
 }

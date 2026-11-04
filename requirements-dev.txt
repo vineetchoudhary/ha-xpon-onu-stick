@@ -1,4 +1,5 @@
-asyncssh==2.24.1
+# Exercise the AsyncSSH version used by the minimum supported Home Assistant.
+asyncssh==2.21.0
 homeassistant==2026.9.0
 pytest==9.1.1
 pytest-asyncio==1.4.0
