@@ -10,24 +10,31 @@ from ...models import OnuCapabilities, OnuParseError, OnuStatus, normalize_mac
 # never reach Home Assistant. Nothing from the configuration or output is
 # interpolated into this command.
 STATUS_READS = {
-    "build": """awk -F= '$1 == "image" || $1 == "kernel"' /etc/odi-build""",
-    "mac": "cat /sys/class/net/br0/address",
-    "gpon": """awk '$1 == "state" || $1 == "onu_id" ||
+    "build": """read_with_timeout awk -F= '$1 == "image" || $1 == "kernel"' /etc/odi-build""",
+    "mac": "read_with_timeout cat /sys/class/net/br0/address",
+    "gpon": """read_with_timeout awk '$1 == "state" || $1 == "onu_id" ||
         ($2 == "los" && ($1 == "alarm_events" || $1 == "alarm_ms"))' /proc/odi_gpon/status""",
-    "optics": "/bin/diag pon get transceiver all",
-    "alarms": "/bin/diag pon get transceiver alarm-status",
-    "counters": """awk '$1 == "ctr" && $2 ~ /^(ds_bip_err_blocks|ds_fec_corrected_cw|ds_fec_uncorrectable_cw)$/' /proc/odi_gpon/counters""",
-    "uptime": "cat /proc/uptime",
-    "cpu": """awk 'NR == 1 {print; exit}' /proc/stat""",
-    "memory": """awk '$1 == "MemTotal:" || $1 == "MemAvailable:"' /proc/meminfo""",
-    "ipv4": """ip -4 -o addr show dev br0 | awk '$3 == "inet" {
+    "optics": "read_with_timeout /bin/diag pon get transceiver all",
+    "alarms": "read_with_timeout /bin/diag pon get transceiver alarm-status",
+    "counters": """read_with_timeout awk '$1 == "ctr" && $2 ~ /^(ds_bip_err_blocks|ds_fec_corrected_cw|ds_fec_uncorrectable_cw)$/' /proc/odi_gpon/counters""",
+    "uptime": "read_with_timeout cat /proc/uptime",
+    "cpu": """read_with_timeout awk 'NR == 1 {print; exit}' /proc/stat""",
+    "memory": """read_with_timeout awk '$1 == "MemTotal:" || $1 == "MemAvailable:"' /proc/meminfo""",
+    "ipv4": """addresses=$(read_with_timeout ip -4 -o addr show dev br0) &&
+        printf '%s\\n' "$addresses" | read_with_timeout awk '$3 == "inet" {
         for (i = 5; i <= NF; i++) if ($i ~ /^br0([^a-zA-Z0-9_:]|$)/) {print $4; break}
     }'""",
 }
 _PREFIX = "XPON-ODI-STATUS "
+# Emit each section even if its command fails. Drop incomplete stdout from
+# failed commands so a partial reply cannot be mistaken for a fresh reading.
 STATUS_COMMAND = "\n".join(
-    ["export LC_ALL=C"]
-    + [f"printf '%s\\n' '{_PREFIX}{name}'; {read}" for name, read in STATUS_READS.items()]
+    ["export LC_ALL=C", 'read_with_timeout() { /bin/busybox timeout -s KILL 2 "$@"; }']
+    + [
+        f"printf '%s\\n' '{_PREFIX}{name}'; "
+        f"""if output=$({read}) 2>/dev/null; then printf '%s\\n' "$output"; fi"""
+        for name, read in STATUS_READS.items()
+    ]
     + [f"printf '%s\\n' '{_PREFIX}end'"]
 )
 
@@ -165,7 +172,7 @@ class OdiStatusParser:
     def _cpu(self, section: str, uptime: int | None) -> float | None:
         try:
             raw = _row(section, "cpu").split()
-            if len(raw) < 8 or uptime is None:
+            if len(raw) < 8:
                 raise ValueError("Incomplete CPU sample")
             # guest/guest_nice are already included in user/nice.
             current = tuple(_uint(counter) for counter in raw[:8])
@@ -174,7 +181,9 @@ class OdiStatusParser:
             raise
         previous, self._cpu_sample = self._cpu_sample, current
         previous_uptime, self._uptime = self._uptime, uptime
-        if previous is None or previous_uptime is None or uptime < previous_uptime:
+        if previous is None or (
+            previous_uptime is not None and uptime is not None and uptime < previous_uptime
+        ):
             return None
         deltas = [value - old for value, old in zip(current, previous, strict=True)]
         total = sum(deltas)

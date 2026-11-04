@@ -35,9 +35,11 @@ Home Assistant authenticates as `root` with the configured Ed25519 key after ver
 
 The batch reads the management MAC, firmware, system data, optical diagnostics and accumulated GPON driver counters. It filters the GPON status on the stick to omit the serial number and provisioning details. The poll has a 10-second deadline and a 256 KiB reply limit.
 
+Each status command has a two-second timeout. If a command fails, the stick discards its partial output and continues with the other reads. Readings affected by an optional command show as unknown. The integration requires a valid firmware response, GPON status structure, and matching MAC before publishing a snapshot.
+
 ### Clock synchronization
 
-With [clock synchronization](configuration.md#clock-synchronization) enabled, Home Assistant checks the ODI OSS clock after the first successful poll and roughly every five minutes on a successful poll. A new connection also triggers a check after the device restarts. If the clock differs by more than 60 seconds, the integration sets the stick's runtime clock to Home Assistant's Unix time and reads it back. The command runs on the same pinned SSH connection after the management MAC matches the entry. A clock error leaves the status readings available and is retried on a later poll.
+With [clock synchronization](configuration.md#clock-synchronization) enabled, Home Assistant checks the ODI OSS clock after the first successful poll and roughly every five minutes on a successful poll. A new connection can trigger an earlier check after the device restarts. If the clock differs by more than 60 seconds, the integration sets the stick's runtime clock to Home Assistant's Unix time and reads it back. The command runs on the same pinned SSH connection after the management MAC matches the entry. A failed clock read skips the clock write. A clock error leaves the status readings available and is retried on a later poll.
 
 ## PON mode
 

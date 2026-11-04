@@ -2,7 +2,9 @@
 
 import asyncio
 import re
+import subprocess
 from pathlib import Path
+from shlex import quote
 from time import time
 from unittest.mock import patch
 
@@ -92,6 +94,38 @@ def test_odi_requires_complete_framed_reply(captured_status):
             parser.parse(reply)
 
 
+def test_odi_batch_continues_after_failed_or_killed_reads(tmp_path):
+    busybox = tmp_path / "busybox"
+    busybox.write_text(
+        """#!/bin/sh
+test "$1 $2 $3 $4" = 'timeout -s KILL 2' || exit 2
+shift 4
+case "$*" in
+    *'/etc/odi-build') printf 'image=v1.15.0\\nkernel=6.18.58' ;;
+    *'/sys/class/net/br0/address') printf '02:00:00:00:00:01' ;;
+    *'/proc/odi_gpon/status') printf 'state 5 (O5)\\nonu_id 1\\nalarm_ms los 0' ;;
+    *'transceiver all') printf 'Rx Power: -20 dBm'; exit 1 ;;
+    *'/proc/odi_gpon/counters') printf 'ctr ds_bip_err_blocks 1'; kill -KILL "$$" ;;
+    *'/proc/meminfo') printf 'MemTotal: 100 kB\\nMemAvailable: 60 kB' ;;
+    'ip -4 -o addr show dev br0') printf '7: br0 inet 192.0.2.10/24 scope global br0'; exit 1 ;;
+    *) exit 127 ;;
+esac
+"""
+    )
+    busybox.chmod(0o700)
+    command = STATUS_COMMAND.replace("/bin/busybox", quote(str(busybox)))
+    result = subprocess.run(
+        ["/bin/sh", "-c", command], check=True, capture_output=True, text=True, timeout=5
+    )
+    assert not result.stderr
+    status = OdiStatusParser().parse(result.stdout)
+    assert status.values["onu_state"] == "O5"
+    assert status.values["memory_usage"] == 40
+    for key in ("rx_power", "gpon_ds_bip_error_blocks", "ip_address"):
+        assert status.values[key] is None
+        assert key in status.field_errors
+
+
 def test_odi_field_errors_are_isolated_and_recover(captured_status):
     parser = OdiStatusParser()
     reply = (
@@ -137,6 +171,15 @@ def test_odi_cpu_samples_and_driver_counter_reset(captured_status):
     assert parser.parse(next_sample).values["cpu_usage"] == 25
 
 
+def test_odi_missing_uptime_preserves_cpu_sample(captured_status):
+    parser = OdiStatusParser()
+    parser.parse(captured_status)
+    second = _replace_section(captured_status, "cpu", "cpu  931 0 7714 157564 0 0 872 0 0 0\n")
+    status = parser.parse(_replace_section(second, "uptime", ""))
+    assert status.values["cpu_usage"] == 25
+    assert set(status.field_errors) == {"uptime"}
+
+
 @pytest_asyncio.fixture
 async def odi_server(captured_status, tmp_path):
     host_key = asyncssh.generate_private_key("ssh-ed25519")
@@ -161,6 +204,7 @@ async def odi_server(captured_status, tmp_path):
         "stall": False,
         "clock": int(time()),
         "set_clock": True,
+        "clock_read_failure": None,
     }
 
     class Server(asyncssh.SSHServer):
@@ -192,8 +236,11 @@ async def odi_server(captured_status, tmp_path):
                 return
             await asyncio.sleep(0.01)
             if process.command == _READ_CLOCK:
+                if state["clock_read_failure"] == "timeout":
+                    await process.wait_closed()
+                    return
                 process.stdout.write(f"{state['clock']}\n".encode())
-                process.exit(0)
+                process.exit(int(state["clock_read_failure"] == "exit"))
                 return
             clock_update = re.fullmatch(
                 r"/bin/busybox date -u -s @([0-9]+) >/dev/null && " + re.escape(_READ_CLOCK),
@@ -482,6 +529,26 @@ async def test_ssh_clock_sync_requires_matching_identity_and_preserves_readings_
         client._next_clock_check = 0
         await client.async_get_status(sync_clock_for_mac=_MAC)
         assert state["clock"] == home_epoch
+    finally:
+        await client.async_close()
+
+
+@pytest.mark.parametrize("failure", ["exit", "timeout"])
+async def test_ssh_failed_clock_read_keeps_telemetry_and_skips_clock_write(
+    odi_server, monkeypatch, failure
+):
+    data, state, key_path = odi_server
+    client = _client(data, key_path)
+    monkeypatch.setattr(ssh, "time", lambda: 1_800_000_000)
+    monkeypatch.setattr(ssh, "_CLOCK_TIMEOUT", 0.1)
+    state["clock"] = 0
+    state["clock_read_failure"] = failure
+    try:
+        status = await client.async_get_status(sync_clock_for_mac=_MAC)
+        assert status.values["onu_state"] == "O5"
+        assert state["commands"] == [STATUS_COMMAND, _READ_CLOCK]
+        assert (await client.async_get_status(sync_clock_for_mac=_MAC)).values["onu_state"] == "O5"
+        assert state["commands"][-1] == STATUS_COMMAND
     finally:
         await client.async_close()
 
