@@ -26,6 +26,7 @@ from .models import (
     OnuSessionBusy,
     OnuStatus,
     normalize_mac,
+    report_field_errors,
 )
 from .transport import OnuTransport, normalize_host
 
@@ -65,8 +66,6 @@ class OnuClient:
         logout_after_poll: bool = DEFAULT_LOGOUT_AFTER_POLL,
         adapter: DeviceAdapter | None = None,
     ) -> None:
-        # There is one verified interface family today. New families are selected
-        # explicitly, never by attempting credentials against several adapters.
         self._adapter = adapter if adapter is not None else BoaAdapter()
         self._transport = OnuTransport(session, host, username, password, self._adapter.policy)
         self.host = self._transport.host
@@ -125,15 +124,7 @@ class OnuClient:
 
     async def _async_read_status(self) -> OnuStatus:
         status = await self._adapter.async_read_status(self._request)
-        for key, error in status.field_errors.items():
-            if self._field_errors.get(key) != error:
-                _LOGGER.error(
-                    "%s at %s. This reading is unknown. Other readings will continue updating",
-                    error,
-                    self.host,
-                )
-        for key in self._field_errors.keys() - status.field_errors.keys():
-            _LOGGER.info("Parsing error cleared for %s at %s", key, self.host)
+        report_field_errors(self._field_errors, status, _LOGGER, self.host)
         self._field_errors = status.field_errors.copy()
         return status
 

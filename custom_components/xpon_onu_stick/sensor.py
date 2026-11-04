@@ -15,16 +15,18 @@ from homeassistant.const import (
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
     UnitOfTemperature,
+    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.entity_registry import async_entries_for_config_entry, async_get
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import OnuConfigEntry
-from .const import DOMAIN, MAX_EPON_LLID_SENSORS
+from .const import MAX_EPON_LLID_SENSORS
 from .coordinator import OnuCoordinator
+from .devices.odi_oss.ssh import OdiSshClient
+from .devices.odi_oss.status import COUNTER_KEYS
 from .health import (
     MEASUREMENT_STATES,
     ONU_STATUS_OPTIONS,
@@ -154,6 +156,17 @@ STATUS_SENSORS = tuple(
         icon="mdi:access-point-network",
     ),
 )
+ODI_COUNTERS = tuple(
+    SensorEntityDescription(
+        key=key,
+        translation_key=key,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        device_class=SensorDeviceClass.DURATION if key == "gpon_los_duration" else None,
+        native_unit_of_measurement=UnitOfTime.SECONDS if key == "gpon_los_duration" else None,
+    )
+    for key in COUNTER_KEYS
+)
 
 
 def _reading_key(key: str) -> str:
@@ -188,6 +201,8 @@ async def async_setup_entry(
             return
         descriptions = [(OnuSensor, description) for description in SENSORS]
         descriptions += [(OnuStatusSensor, description) for description in STATUS_SENSORS]
+        if isinstance(coordinator.client, OdiSshClient):
+            descriptions += [(OnuSensor, description) for description in ODI_COUNTERS]
         if coordinator.data.pon_mode == "epon":
             descriptions = [
                 (sensor_class, description)
@@ -243,14 +258,7 @@ class OnuSensor(CoordinatorEntity[OnuCoordinator], SensorEntity):
         super().__init__(coordinator)
         self.entity_description = description
         self._attr_unique_id = f"{coordinator.entry.unique_id}_{description.key}"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, coordinator.entry.unique_id)},
-            connections={(CONNECTION_NETWORK_MAC, coordinator.data.mac_address)},
-            name=coordinator.data.values.get("device_name") or coordinator.entry.title,
-            model=coordinator.data.values.get("device_name"),
-            sw_version=coordinator.data.values.get("firmware_version"),
-            configuration_url=coordinator.client.host,
-        )
+        self._attr_device_info = coordinator.device_info
 
     @property
     def available(self) -> bool:

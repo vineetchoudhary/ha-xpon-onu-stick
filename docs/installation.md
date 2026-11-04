@@ -1,6 +1,6 @@
 # Installation
 
-Requires Home Assistant **2026.9.0 or newer** and access to the ONU's web interface.
+Requires Home Assistant **2026.9.0 or newer**. Home Assistant Core must be able to reach the ONU's web interface for stock firmware or its SSH port for [ODI OSS](configuration.md#odi-oss-over-ssh).
 
 ## HACS (recommended)
 

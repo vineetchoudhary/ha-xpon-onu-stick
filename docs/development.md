@@ -16,7 +16,7 @@ For later runs:
 ./scripts/test.sh
 ```
 
-Checks cover metadata, dependencies, formatting, GPON/EPON readings, sessions, and the dashboard. Logs are saved in `.test-results/`.
+Checks cover metadata, dependencies, formatting, GPON/EPON readings, sessions, ODI OSS over a local SSH server, and the dashboard. Logs are saved in `.test-results/`.
 
 HTML fixtures are grouped by device and firmware, with `default` for unknown firmware. See [fixture layout and provenance](../tests/fixtures/README.md).
 
@@ -41,6 +41,8 @@ When login is required:
 ```
 
 The password is prompted privately. Readings are printed and saved in the log. Invalid fields show as `null` with an error. No device settings are changed.
+
+For ODI OSS, use an isolated Home Assistant Core configuration with an enrolled test key. Follow the [SSH setup](configuration.md#odi-oss-over-ssh), check the device readings across multiple polls, and restart Core to verify that the persisted entry reconnects. Use the [sanitized fixture](../tests/fixtures/README.md) for routine regression tests.
 
 ## Preview and test the dashboard card
 

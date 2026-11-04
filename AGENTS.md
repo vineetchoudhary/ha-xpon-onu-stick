@@ -4,14 +4,14 @@ These instructions apply throughout this repository. Follow the user's requested
 
 ## Project and code map
 
-XPON ONU Stick is a Home Assistant custom integration for monitoring GPON and EPON ONU sticks through their local web interface without changing device settings. Its domain is `xpon_onu_stick`.
+XPON ONU Stick is a Home Assistant custom integration for monitoring ONU sticks through the stock GPON/EPON web interface or ODI OSS GPON SSH without changing device settings. Its domain is `xpon_onu_stick`.
 
 Keep these architectural boundaries clear:
 
 | Area | Starting points |
 | --- | --- |
 | Shared device code | [Client workflow](custom_components/xpon_onu_stick/api.py), [HTTP transport](custom_components/xpon_onu_stick/transport.py), and [status/capability types](custom_components/xpon_onu_stick/models.py). |
-| Device differences | [Interface adapters](custom_components/xpon_onu_stick/devices/) own page/authentication formats and firmware profiles. The current family is Boa. |
+| Device differences | [Interface adapters](custom_components/xpon_onu_stick/devices/) own status/authentication formats. Boa uses stock pages and firmware profiles. ODI OSS uses a fixed read-only SSH batch. |
 | Home Assistant integration | The [integration package](custom_components/xpon_onu_stick/) owns entry lifecycle, configuration, polling, entities, advisory statuses, and resource registration. |
 | Dashboard | The [bundled card](custom_components/xpon_onu_stick/frontend/) uses Home Assistant data. [Preview tools](tools/card/) use sample readings. |
 | Tests and developer tools | [Tests](tests/) cover captured firmware, simulator behavior, Home Assistant, and the browser. Follow the [development guide](docs/development.md) for commands. |
@@ -50,6 +50,7 @@ The request boundary declared in the [Boa adapter](custom_components/xpon_onu_st
 - A logout failure must preserve the successful readings and allow a later retry. Authentication failures must still reach Home Assistant's reauthentication flow.
 - Default checks use fixtures and localhost simulators. Run a physical-device check only when requested, using an explicitly supplied address. Never infer a management address or reuse credentials found elsewhere.
 - Use the existing private password prompt for live checks. Keep credentials, cookies, raw HAR files, and personal network details out of source files, command arguments, public logs, and agent configuration.
+- Keep ODI OSS SSH polling on the configured endpoint with a pinned Ed25519 host fingerprint and dedicated key file. Preserve the fixed read-only command, endpoint lock, reply/deadline bounds, and filtering of identifying GPON fields on the stick. Treat new commands as request policy changes that require captured evidence and regression coverage.
 
 ## Readings and Home Assistant identity
 
@@ -118,6 +119,7 @@ For authorized live checks, follow [the development guide](docs/development.md#t
 | Parsing, values, or PON modes | `tests/test_api.py`, `tests/test_epon.py`, and `tests/test_device_captures.py`. |
 | Interface adapters, firmware profiles, or capabilities | `tests/test_devices.py` and `tests/test_integration.py`. |
 | Login, cookies, request boundaries, or logout | `tests/test_form_auth.py`, `tests/test_logout.py`, and `tests/test_device_captures.py`. |
+| ODI OSS SSH, telemetry, or diagnostics | `tests/test_odi_oss.py`. |
 | Setup, identity, polling, options, or recovery | `tests/test_integration.py`. |
 | Thresholds or friendly statuses | `tests/test_health.py` and `tests/test_integration.py`. |
 | Card registration or dashboard behavior | `tests/test_card.py`, `tests/test_card_ui.py`, and `tools/card/ui-tests.js`. |

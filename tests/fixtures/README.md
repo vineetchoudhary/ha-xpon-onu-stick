@@ -25,6 +25,7 @@ model is unconfirmed. `Twowing` and `GN25L95` are commented source metadata.
 | --- | --- | --- |
 | [ODI DFP-34X-2C2](devices/odi-dfp-34x-2c2/V1.0-220923/) | `V1.0-220923` | Device Status, PON Status, login, logout form, and logout acknowledgement supplied on 22 October 2026. Original status and login snapshots are retained with `_baseline` filenames. |
 | [Reported BDCOM ONU, model unconfirmed](devices/bdcom-unknown-model/V2.11.00P3T1/) | `V2.11.00P3T1` | Issue #1 Device Status, PON Status, login, already-logged-in response, and logout acknowledgement. |
+| [ODI DFP-34X-2C2 over SSH](devices/odi-dfp-34x-2c2/odi-oss-v1.15.0/) | ODI OSS `v1.15.0` | Fixed read-only status batch captured on 4 November 2026. MAC, IP and ONU ID replaced with test values. The batch omits the GPON serial number and provisioning data. |
 
 ## Provenance
 

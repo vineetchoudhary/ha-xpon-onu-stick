@@ -1,0 +1,54 @@
+XPON-ODI-STATUS build
+image=v1.15.0
+kernel=6.18.58
+XPON-ODI-STATUS mac
+02:00:00:00:00:01
+XPON-ODI-STATUS gpon
+state 5 (O5)
+onu_id 1
+alarm_events los 0
+alarm_ms los 0
+XPON-ODI-STATUS optics
+Vendor Name: ODI
+Part Number: DFP-34X-2C2
+Temperature: 30.500000 C
+Voltage: 3.263900 V
+Bias Current: 10.400000 mA
+Tx Power: 2.060699  dBm
+Rx Power: -26.777807  dBm
+XPON-ODI-STATUS alarms
+Alarm Temperature high, status: clear
+Alarm Temperature low, status: clear
+Alarm Voltage high, status: clear
+Alarm Voltage low, status: clear
+Alarm Bias Current high, status: clear
+Alarm Bias Current low, status: clear
+Alarm Tx Power high, status: clear
+Alarm Tx Power low, status: clear
+Alarm Rx Power high, status: clear
+Alarm Rx Power low, status: clear
+Warning Temperature high, status: clear
+Warning Temperature low, status: clear
+Warning Voltage high, status: clear
+Warning Voltage low, status: clear
+Warning Bias Current high, status: clear
+Warning Bias Current low, status: clear
+Warning Tx Power high, status: clear
+Warning Tx Power low, status: clear
+Warning Rx Power high, status: clear
+Warning Rx Power low, status: clear
+Optical LOS, status: clear
+XPON-ODI-STATUS counters
+ctr ds_bip_err_blocks 2
+ctr ds_fec_corrected_cw 0
+ctr ds_fec_uncorrectable_cw 0
+XPON-ODI-STATUS uptime
+1675.85 1575.34
+XPON-ODI-STATUS cpu
+cpu  921 0 7714 157534 0 0 872 0 0 0
+XPON-ODI-STATUS memory
+MemTotal:          26964 kB
+MemAvailable:      15008 kB
+XPON-ODI-STATUS ipv4
+192.0.2.10/24
+XPON-ODI-STATUS end

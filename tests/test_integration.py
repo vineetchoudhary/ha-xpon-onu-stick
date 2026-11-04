@@ -64,6 +64,11 @@ async def set_session_option(hass, entry, enabled):
 async def test_initial_setup_requires_an_address_and_never_uses_a_fallback(hass):
     with patch("custom_components.xpon_onu_stick.api.OnuClient.async_get_status") as fetch:
         result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": "user"})
+        assert result["type"] is FlowResultType.MENU
+        assert result["menu_options"] == ["boa", "ssh"]
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"next_step_id": "boa"}
+        )
         assert result["type"] is FlowResultType.FORM
         schema = result["data_schema"]
         host_field = next(field for field in schema.schema if field.schema == CONF_HOST)
@@ -840,6 +845,10 @@ async def test_reconfigure_preserves_entity_identity(hass, onu_server):
     ids_before = {state.entity_id for state in hass.states.async_all("sensor")}
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": "reconfigure", "entry_id": entry.entry_id}
+    )
+    assert result["type"] is FlowResultType.MENU
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "boa"}
     )
     host_field = next(field for field in result["data_schema"].schema if field.schema == CONF_HOST)
     assert host_field.default() == host

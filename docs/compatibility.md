@@ -5,6 +5,7 @@
 | Device | Mode | Firmware |
 | --- | --- | --- |
 | ODI DFP-34X-2C2, Realtek RTL9601D | GPON | `V1.0-220923`, stock SFU build `M110_sfp_ODI_220923.tar` |
+| ODI DFP-34X-2C2 | GPON over SSH | ODI OSS `v1.15.0`, kernel `6.18.58`. Setup, repeated polls, and restart were verified on a physical stick from an isolated Home Assistant Core `2026.9.0` instance. |
 | BDCOM ONU, exact model unconfirmed ([issue #1](https://github.com/vineetchoudhary/ha-xpon-onu-stick/issues/1)) | EPON | `V2.11.00P3T1` |
 
 ## Likely supported, not tested
@@ -24,10 +25,12 @@ These use related hardware or web pages. Check compatibility below before using 
 ## Not supported
 
 - Older ZTE-based ODI sticks and Lantiq/MaxLinear sticks with different web interfaces.
-- Replacement firmware that removes the stock status pages, such as odi-oss.
+- Other replacement firmware without either supported status interface.
 - PON pages without a recognized GPON section or an **EPON LLID Status** table.
 
 ## Check an untested stick
+
+For ODI OSS, use [SSH setup](configuration.md#odi-oss-over-ssh) and compare the device's readings across multiple polls. The checks below apply to the stock web interface.
 
 - `/status.asp` and `/status_pon.asp` must use English labels and report a valid MAC address.
 - The PON page must include a **GPON Status** section or an **EPON LLID Status** table.

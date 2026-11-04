@@ -4,7 +4,7 @@
 
 # XPON ONU Stick for Home Assistant
 
-Monitor your ONU SFP stick in Home Assistant through its local web interface, without changing device settings.
+Monitor your ONU SFP stick in Home Assistant through the stock web interface or directly over SSH with ODI OSS firmware. Polling is read-only.
 
 Supports **GPON and EPON**. Requires Home Assistant **2026.9.0 or newer**. See [tested devices and firmware](docs/compatibility.md).
 
@@ -18,6 +18,7 @@ Supports **GPON and EPON**. Requires Home Assistant **2026.9.0 or newer**. See [
 
 - Monitor optical power, temperature, voltage, laser bias current, CPU, and memory.
 - Automatically detect GPON registration states or EPON LLID status codes.
+- Read ODI OSS optical alarms and GPON line-quality counters over SSH.
 - Adjust refresh intervals, status limits, and optional logout after polling.
 - Use the included dashboard card with a 24-hour Rx power trend.
 - Keep valid readings available when another field cannot be parsed.
@@ -32,7 +33,7 @@ With [HACS installed](https://www.hacs.xyz/docs/use/), open the repository:
 
 1. Download **XPON ONU Stick** and restart Home Assistant.
 2. Open **Settings → Devices & services → Add integration** and select **XPON ONU Stick**.
-3. Enter your ONU's management address and login credentials.
+3. Choose the stock web interface or [ODI OSS over SSH](docs/configuration.md#odi-oss-over-ssh), then enter your ONU's connection details.
 
 See [installation](docs/installation.md) for manual HACS setup or installation without HACS.
 

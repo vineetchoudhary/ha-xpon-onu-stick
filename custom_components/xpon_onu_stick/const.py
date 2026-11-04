@@ -1,6 +1,12 @@
 """Constants for XPON ONU Stick."""
 
 DOMAIN = "xpon_onu_stick"
+CONF_CONNECTION_TYPE = "connection_type"
+CONF_SSH_KEY_FILE = "ssh_key_file"
+CONF_SSH_FINGERPRINT = "ssh_fingerprint"
+CONNECTION_BOA = "boa"
+CONNECTION_ODI_SSH = "ssh"
+DEFAULT_SSH_PORT = 22
 CONF_LOGOUT_AFTER_POLL = "logout_after_poll"
 DEFAULT_LOGOUT_AFTER_POLL = False
 DEFAULT_SCAN_INTERVAL = 30

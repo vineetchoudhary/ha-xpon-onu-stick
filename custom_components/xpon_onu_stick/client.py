@@ -1,12 +1,16 @@
 """Retain the integration's own login across validation, polling, and reloads."""
 
+from collections.abc import Mapping
+from typing import Any
+
 import aiohttp
-from homeassistant.const import EVENT_HOMEASSISTANT_STOP
+from homeassistant.const import CONF_HOST, CONF_PORT, EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .api import OnuClient, normalize_host
-from .const import DOMAIN
+from .const import CONF_SSH_FINGERPRINT, CONF_SSH_KEY_FILE, DOMAIN
+from .devices.odi_oss.ssh import OdiSshClient
 
 _DATA_CLIENTS = f"{DOMAIN}_clients"
 _DATA_HTTP = f"{DOMAIN}_http"
@@ -49,3 +53,15 @@ def async_forget_onu_client(hass: HomeAssistant, host: str) -> None:
     """Release cached credentials and cookies when the configured device is removed."""
     clients = hass.data.get(_DATA_CLIENTS, {})
     clients.pop(normalize_host(host), None)
+
+
+@callback
+def async_create_ssh_client(hass: HomeAssistant, data: Mapping[str, Any]) -> OdiSshClient:
+    """Create a client owned by one validation or loaded entry."""
+    return OdiSshClient(
+        data[CONF_HOST],
+        data[CONF_PORT],
+        hass.config.path(),
+        data[CONF_SSH_KEY_FILE],
+        data[CONF_SSH_FINGERPRINT],
+    )

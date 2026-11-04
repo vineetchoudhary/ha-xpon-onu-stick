@@ -30,6 +30,10 @@ For example, Tx power `-inf dBm` shows as **Unknown** in Home Assistant and a da
 
 See [connection behavior](behavior.md#missing-or-invalid-readings) for recovery and device-level failures.
 
+## ODI OSS SSH readings
+
+ODI OSS supplies the O1–O7 state and ONU ID through the GPON driver. Optical fields have explicit units, and the DDM flag values are `clear` and `occur`. The GPON diagnostic counters are unsigned integers, with LOS time converted from milliseconds to seconds. The first CPU sample after connecting or a counter reset is unknown. [ODI OSS telemetry reference](https://github.com/AndreZiviani/odi-oss/blob/main/docs/TOOLS.md)
+
 ## References
 
 - [RTL960x firmware notes](https://github.com/Anime4000/RTL960x/blob/main/Firmware/DFP-34X-2C2/README.md).

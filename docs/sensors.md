@@ -20,11 +20,25 @@
 | GPON Status | LOID status | Text, e.g. `Initial Status` |
 | EPON LLID Status | EPON LLID `<index>` status | Raw nonnegative integer code, one sensor per reported index |
 
-Measurements support history and statistics. Uptime and device details keep the firmware's original text.
+Measurements support history and statistics. Stock uptime and device details keep the firmware's original text.
 
-Every sensor includes `pon_mode` (`gpon` or `epon`). GPON has 22 entities. EPON has 18 common entities plus one per LLID index, without GPON registration sensors. LLID codes are raw diagnostics, without connection labels, units, or measurement statistics.
+Every measurement and status sensor includes `pon_mode` (`gpon` or `epon`). Stock GPON has 22 entities. Stock EPON has 18 common entities plus one per LLID index, without GPON registration sensors. LLID codes are raw diagnostics, without connection labels, units, or measurement statistics.
 
 Each entry can register up to 256 LLID sensors, including previously seen indices. Existing sensors keep updating at this limit.
+
+## ODI OSS line diagnostics
+
+ODI OSS provides the common GPON and optics readings. CPU usage is calculated between valid samples, and uptime is displayed as hours, minutes and seconds.
+
+| Diagnostic entity | Meaning |
+| --- | --- |
+| Optical loss of signal | Live LOS flag reported by the optics module. |
+| Optical alarm and Optical warning | At least one of the module's high or low temperature, voltage, bias current or power flags is active for that severity. |
+| Downstream BIP errored blocks | Accumulated downstream blocks with BIP errors. |
+| Downstream FEC corrected and uncorrectable codewords | Separate accumulated downstream FEC counts. |
+| GPON loss of signal events and duration | Driver-detected LOS events and total time in LOS, in seconds. |
+
+These entities appear on the Home Assistant device page. Driver counters accumulate from boot and Home Assistant treats a reset as a new statistics cycle. The optical flags are separate from Home Assistant's advisory status limits. [ODI OSS telemetry reference](https://github.com/AndreZiviani/odi-oss/blob/main/docs/TOOLS.md)
 
 ## Friendly status sensors
 

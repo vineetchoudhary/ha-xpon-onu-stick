@@ -2,6 +2,7 @@
 
 import re
 from dataclasses import dataclass, field
+from logging import Logger
 
 GPON_READING_KEYS = frozenset({"onu_state", "onu_id", "loid_status"})
 
@@ -60,9 +61,9 @@ class OnuCapabilities:
 
 @dataclass(frozen=True)
 class OnuStatus:
-    """One poll of both pages, with invalid readings isolated by field."""
+    """One validated poll, with invalid readings isolated by field."""
 
-    values: dict[str, str | float | int | None]
+    values: dict[str, str | float | int | bool | None]
     mac_address: str
     pon_mode: str = "gpon"
     field_errors: dict[str, str] = field(default_factory=dict)
@@ -82,3 +83,18 @@ class OnuStatus:
             else f"XPON ONU Stick ({self.mac_address})"
         )
         return str(self.values.get("device_name") or fallback)
+
+
+def report_field_errors(
+    previous: dict[str, str], status: OnuStatus, logger: Logger, host: str
+) -> None:
+    """Log only new, changed, or recovered field errors."""
+    for key, error in status.field_errors.items():
+        if previous.get(key) != error:
+            logger.error(
+                "%s at %s. This reading is unknown. Other readings will continue updating",
+                error,
+                host,
+            )
+    for key in previous.keys() - status.field_errors.keys():
+        logger.info("Parsing error cleared for %s at %s", key, host)

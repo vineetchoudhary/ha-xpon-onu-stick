@@ -1,12 +1,12 @@
 # Connection and read-only behavior
 
-The integration reads the stick's web interface, independently of the router or switch hosting it.
+The integration reads the stock web interface or connects to ODI OSS over SSH, independently of the router or switch hosting the stick.
 
 ## Polling
 
-All sensors share two status reads every **30 seconds**. Set an interval from **10 to 3600 seconds** in [configuration](configuration.md#4-set-the-refresh-interval).
+All sensors share one poll every **30 seconds**. Set an interval from **10 to 3600 seconds** in [configuration](configuration.md#4-set-the-refresh-interval).
 
-## Requests
+## Stock web requests
 
 - `GET /status.asp` for device readings.
 - `GET /status_pon.asp` for PON readings.
@@ -29,9 +29,15 @@ Requests use only the configured HTTP(S) origin and fixed paths above. Login for
 
 Responses are limited to 256 KiB. HTTPS verifies certificates. HTTP sends authentication without encryption.
 
+## ODI OSS over SSH
+
+Home Assistant authenticates as `root` with the configured Ed25519 key after verifying the stick's pinned host fingerprint. A poll runs one fixed batch of read-only status commands and reuses the SSH connection while it is healthy. Validation and polling for the same SSH endpoint are serialized. A failed transport closes the connection so the next poll can reconnect.
+
+The batch reads the management MAC, firmware, system data, optical diagnostics and accumulated GPON driver counters. It filters the GPON status on the stick to omit the serial number and provisioning details. The poll has a 10-second deadline and a 256 KiB reply limit.
+
 ## PON mode
 
-Mode is detected from GPON status fields or the **EPON LLID Status** table. EPON codes are reported unchanged.
+On stock firmware, mode is detected from GPON status fields or the **EPON LLID Status** table. EPON codes are reported unchanged. ODI OSS reports GPON status.
 
 Common entities keep their identity across mode changes. New LLID indices add sensors automatically. Sensors for a previous mode or missing index become unavailable until reported again.
 
@@ -47,6 +53,6 @@ The display name comes from firmware and may differ from the physical model. If 
 - A bad field, such as `-inf dBm`, affects only that reading and its related status.
 - The sensor includes a `parse_error` attribute. Details appear in **Settings → System → Logs**.
 - Readings recover automatically, without repeated logs for unchanged errors.
-- Connection, authentication, page, or MAC identity failures make all sensors unavailable.
+- Connection, authentication, status structure, or MAC identity failures make all sensors unavailable.
 
 Field expectations can vary by a verified firmware profile. A known optional row may be absent without a parsing error. Missing or unknown firmware uses the generic interface profile, so it does not silently inherit another firmware's exceptions. See [device adapters and firmware profiles](device-adapters.md).

@@ -4,20 +4,16 @@
     "step": {
       "user": {
         "title": "Connect to your ONU stick",
-        "description": "Read the Device Status and PON Status pages. Enter the username and password used on the ONU login page. Leave credentials blank only for direct access.",
-        "data": {
-          "host": "Device address",
-          "username": "Username (optional)",
-          "password": "Password (optional)"
+        "menu_options": {
+          "boa": "Stock firmware (Boa web interface)",
+          "ssh": "ODI OSS (SSH)"
         }
       },
       "reconfigure": {
         "title": "Update ONU connection",
-        "description": "Read the Device Status and PON Status pages. Enter the username and password used on the ONU login page. Leave credentials blank only for direct access. Re-enter your password when changing the connection.",
-        "data": {
-          "host": "Device address",
-          "username": "Username (optional)",
-          "password": "Password (optional)"
+        "menu_options": {
+          "boa": "Stock firmware (Boa web interface)",
+          "ssh": "ODI OSS (SSH)"
         }
       },
       "reauth_confirm": {
@@ -27,6 +23,32 @@
           "username": "Username (optional)",
           "password": "Password (optional)"
         }
+      },
+      "boa": {
+        "title": "Connect to the stock web interface",
+        "description": "Read the Device Status and PON Status pages. Enter the username and password used on the ONU login page. Leave credentials blank only for direct access. Enter the password again when reconfiguring.",
+        "data": {
+          "host": "Device address",
+          "username": "Username (optional)",
+          "password": "Password (optional)"
+        }
+      },
+      "ssh": {
+        "title": "Connect to ODI OSS over SSH",
+        "description": "Enroll your dedicated public key on the stick and place its private key in xpon_onu_stick/ssh/ under the Home Assistant configuration directory. Verify the stick’s Ed25519 host fingerprint using a trusted connection.",
+        "data": {
+          "host": "Device hostname or IP address",
+          "port": "SSH port",
+          "ssh_key_file": "Private key filename",
+          "ssh_fingerprint": "SSH host fingerprint (SHA256:…)"
+        }
+      },
+      "ssh_reauth": {
+        "title": "Update the ODI OSS SSH key",
+        "description": "Enroll the new public key on the stick and enter the private key filename from xpon_onu_stick/ssh/. Use Reconfigure to change the address or host fingerprint.",
+        "data": {
+          "ssh_key_file": "Private key filename"
+        }
       }
     },
     "error": {
@@ -35,7 +57,15 @@
       "invalid_host": "Enter a hostname, IP address, or HTTP(S) base URL without a path, query, or embedded credentials.",
       "unsupported_device": "The pages do not contain the expected Device Status and PON Status fields, or a value is invalid.",
       "username_required": "A username is required when a password is provided.",
-      "session_busy": "The ONU already has an active management session. Sign out of the other session and try again."
+      "session_busy": "The ONU already has an active management session. Sign out of the other session and try again.",
+      "invalid_ssh_host": "Enter the stick’s hostname or IP address. Enter the port separately.",
+      "invalid_ssh_port": "Enter an SSH port from 1 to 65535.",
+      "invalid_ssh_fingerprint": "Enter the verified OpenSSH SHA-256 host fingerprint, including the SHA256: prefix.",
+      "invalid_ssh_key_file": "Could not load the key. Use the filename of an unencrypted Ed25519 private key with mode 0600 in xpon_onu_stick/ssh/.",
+      "ssh_host_key_mismatch": "The stick’s SSH host key does not match the fingerprint. Verify the host key before changing the fingerprint.",
+      "ssh_key_rejected": "The stick rejected the private key. Check that its matching public key is enrolled on the stick.",
+      "cannot_connect_ssh": "Could not read status over SSH. Check the address, port, and reachability from Home Assistant.",
+      "unsupported_ssh_device": "The SSH reply did not contain the expected ODI OSS build, GPON status, and management MAC."
     },
     "abort": {
       "already_configured": "This ONU stick is already configured.",
@@ -203,6 +233,32 @@
           "disabled": "Disabled by provider",
           "unrecognized": "Unrecognized state"
         }
+      },
+      "gpon_ds_bip_error_blocks": {
+        "name": "Downstream BIP errored blocks"
+      },
+      "gpon_ds_fec_corrected_codewords": {
+        "name": "Downstream FEC corrected codewords"
+      },
+      "gpon_ds_fec_uncorrectable_codewords": {
+        "name": "Downstream FEC uncorrectable codewords"
+      },
+      "gpon_los_events": {
+        "name": "GPON loss of signal events"
+      },
+      "gpon_los_duration": {
+        "name": "GPON loss of signal duration"
+      }
+    },
+    "binary_sensor": {
+      "optical_los": {
+        "name": "Optical loss of signal"
+      },
+      "optical_ddm_alarm": {
+        "name": "Optical alarm"
+      },
+      "optical_ddm_warning": {
+        "name": "Optical warning"
       }
     }
   }

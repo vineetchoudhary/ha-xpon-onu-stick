@@ -1,6 +1,6 @@
 # Device adapters and firmware profiles
 
-Device communication is separate from Home Assistant entities. Devices that use the same web interface share an adapter. Captured differences within that interface belong in small firmware profiles.
+Device communication is separate from Home Assistant entities. Devices that use the same status interface share an adapter. Captured differences within an interface belong in small firmware profiles.
 
 ## Code layout
 
@@ -16,16 +16,17 @@ All paths below are inside `custom_components/xpon_onu_stick/`:
 | [devices/boa/parsing.py](../custom_components/xpon_onu_stick/devices/boa/parsing.py) | Table parsing, numeric validation, PON mode detection, and raw LLID values. |
 | [devices/boa/auth.py](../custom_components/xpon_onu_stick/devices/boa/auth.py) | Supported form validation, login/logout payloads, and acknowledgement parsing. |
 | [devices/boa/profiles.py](../custom_components/xpon_onu_stick/devices/boa/profiles.py) | Proven field differences for captured firmware. |
+| [devices/odi_oss/](../custom_components/xpon_onu_stick/devices/odi_oss/) | Pinned SSH transport, a fixed read-only status batch and parsing for ODI OSS. |
 
 The coordinator, sensors, config flow, and dashboard consume the shared status model. They do not select parsing rules by manufacturer or firmware version. Adapter, model, and transport modules do not import Home Assistant APIs.
 
 ## Interface families
 
-An adapter owns the page formats and authentication semantics of a web interface. This can cover several device brands and firmware versions. GPON and EPON are detected from the PON page and do not require separate copies of the client.
+An adapter owns the formats and authentication semantics of a status interface. Choose stock Boa or ODI OSS explicitly in the Home Assistant setup flow. Each returns the common `OnuStatus` snapshot.
 
-There is one supported family today, `BoaAdapter`, which is the default. `OnuClient` accepts an explicit `adapter=` for another implementation of the same contract. There is no search through alternate endpoints or repeated login attempts to guess a family. When adding another family, introduce an explicit selection path or deterministic identification from verified pages before credentials are submitted.
+### Boa web interface
 
-An adapter must:
+`BoaAdapter` is the default for `OnuClient`, which accepts an explicit `adapter=` for another implementation of its HTTP contract. GPON and EPON are detected from the PON page. A Boa-style adapter must:
 
 - Declare its allowed request methods/paths and POST Referer paths in an immutable `HttpPolicy`.
 - Read status through the supplied asynchronous request function, sequentially, and return an `OnuStatus` only after all required pages and device identity are validated.
@@ -34,6 +35,10 @@ An adapter must:
 - Interpret authentication redirects and known malformed login responses without following redirects.
 
 The shared client owns login retries, session ownership, and optional logout. An adapter must not create an HTTP session, bypass the shared transport, decide to close a borrowed session, or change a device setting. The transport enforces the selected policy and rejects foreign URLs, query/fragment paths, and unreviewed methods before sending a request.
+
+### ODI OSS SSH interface
+
+The SSH client verifies a configured host fingerprint and only runs the fixed telemetry command from the ODI OSS adapter. It owns its connection and endpoint lock. The parser validates the build, GPON structure and management MAC, and reports per-field errors and supported diagnostics through the shared snapshot.
 
 ## Firmware profiles
 
